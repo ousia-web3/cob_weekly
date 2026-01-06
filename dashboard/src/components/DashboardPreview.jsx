@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Edit2, Save, X } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -93,8 +94,12 @@ const Top10Table = ({ title, dataInfo, headerColor = "indigo" }) => {
   );
 };
 
-const DashboardPreview = ({ data }) => {
+
+
+const DashboardPreview = ({ data, onInsightsChange }) => {
   const [isDetailedTableVisible, setIsDetailedTableVisible] = useState(true);
+  const [isEditingInsights, setIsEditingInsights] = useState(false);
+  const [tempInsights, setTempInsights] = useState([]);
 
   if (!data)
     return (
@@ -114,7 +119,28 @@ const DashboardPreview = ({ data }) => {
     aiInsight,
   } = data;
 
+  const handleEditInsights = () => {
+    setTempInsights(aiInsight ? [...aiInsight] : []);
+    setIsEditingInsights(true);
+  };
 
+  const handleSaveInsights = () => {
+    if (onInsightsChange) {
+      onInsightsChange(tempInsights);
+    }
+    setIsEditingInsights(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingInsights(false);
+    setTempInsights([]);
+  };
+
+  const handleInsightChange = (index, field, value) => {
+    const newInsights = [...tempInsights];
+    newInsights[index] = { ...newInsights[index], [field]: value };
+    setTempInsights(newInsights);
+  };
 
   // Channel Type Data Calculation (if not provided)
   const channelTypeData = coBrandTop20.reduce((acc, item) => {
@@ -149,25 +175,88 @@ const DashboardPreview = ({ data }) => {
 
       {/* 2. Executive Insight (Summary) */}
       <div className="bg-white p-6 shadow-sm border-b border-slate-200 mb-6">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          핵심 요약
-        </h3>
-        <div className="bg-indigo-50 border-l-4 border-indigo-500 p-5 rounded-r-md">
-          {aiInsight ? (
-            aiInsight.map((insight, idx) => (
-              <div key={idx} className="mb-4 last:mb-0">
-                <h4 className="font-bold text-indigo-700 text-base mb-1">
-                  {insight.title}
-                </h4>
-                <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
-                  {insight.content}
-                </p>
-              </div>
-            ))
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            핵심 요약
+          </h3>
+          <div className="flex gap-2">
+            {isEditingInsights ? (
+              <>
+                <button
+                  onClick={handleSaveInsights}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition-colors"
+                >
+                  <Save className="w-3 h-3" /> 저장
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded hover:bg-slate-300 transition-colors"
+                >
+                  <X className="w-3 h-3" /> 취소
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleEditInsights}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs rounded hover:bg-slate-50 transition-colors"
+              >
+                <Edit2 className="w-3 h-3" /> 수정
+              </button>
+            )}
+          </div>
+        </div>
+        
+        <div className={`bg-indigo-50 border-l-4 border-indigo-500 p-5 rounded-r-md ${isEditingInsights ? 'ring-2 ring-indigo-200' : ''}`}>
+          {isEditingInsights ? (
+            // Edit Mode
+            <div className="space-y-4">
+              {tempInsights.map((insight, idx) => (
+                <div key={idx} className="bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                  <div className="mb-2">
+                    <label className="block text-xs font-bold text-indigo-600 mb-1">제목 {idx + 1}</label>
+                    <input
+                      type="text"
+                      value={insight.title}
+                      onChange={(e) => handleInsightChange(idx, 'title', e.target.value)}
+                      className="w-full text-sm font-bold text-indigo-700 border-b border-indigo-200 focus:border-indigo-500 focus:outline-none py-1"
+                      placeholder="인사이트 제목 입력"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">내용</label>
+                    <textarea
+                      value={insight.content}
+                      onChange={(e) => handleInsightChange(idx, 'content', e.target.value)}
+                      className="w-full text-sm text-slate-700 border border-slate-200 rounded p-2 focus:border-indigo-500 focus:outline-none min-h-[80px]"
+                      placeholder="인사이트 내용 입력"
+                    />
+                  </div>
+                </div>
+              ))}
+              {tempInsights.length === 0 && (
+                <div className="text-center text-slate-400 text-sm py-4">
+                  편집할 내용이 없습니다.
+                </div>
+              )}
+            </div>
           ) : (
-            <p className="text-slate-500 italic">
-              AI 요약이 생성되지 않았습니다.
-            </p>
+            // View Mode
+            aiInsight ? (
+              aiInsight.map((insight, idx) => (
+                <div key={idx} className="mb-4 last:mb-0">
+                  <h4 className="font-bold text-indigo-700 text-base mb-1">
+                    {insight.title}
+                  </h4>
+                  <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
+                    {insight.content}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-500 italic">
+                AI 요약이 생성되지 않았습니다.
+              </p>
+            )
           )}
         </div>
       </div>
