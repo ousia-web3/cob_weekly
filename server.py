@@ -15,10 +15,16 @@ load_dotenv()
 
 app = FastAPI()
 
+from fastapi import Response
+
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
+
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://192.168.82.105:5173"],  # React Dev Server
+    allow_origins=["*"],  # 모든 오리진 허용 (개발 편의성)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -187,42 +193,47 @@ def generate_ai_insights(df):
                 main_data=main_data,
                 top10_data=top10_data
             )
+            # Append constraint to the prompt
+            prompt += "\n\n[Style Constraint]\nDo NOT use polite sentence endings like '~있습니다' or '~됩니다'. Use concise forms ending in nouns or '~음/함'."
             print(f"프롬프트 템플릿 사용 (처음 200자): {PROMPT_TEMPLATE[:200]}")
         else:
             # Fallback to default prompt if not set in .env
             prompt = f"""
-        You are a data analyst for a travel agency. Analyze the following weekly traffic data and provide an executive summary.
+        당신은 여행사의 데이터 분석가입니다. 다음 주간 트래픽 데이터를 분석하여 임원 보고용 핵심 요약(Executive Summary)을 작성해주세요.
         
-        Data Context:
-        - The data covers weekly UV (Unique Visitors) for a travel platform.
-        - "Co-Brand" refers to partner sites.
-        - Compare current week vs previous week.
+        [데이터 컨텍스트]
+        - 데이터는 여행 플랫폼의 주간 UV(Unique Visitors)입니다.
+        - "Co-Brand"는 제휴 사이트를 의미합니다.
+        - 이번 주와 지난 주 데이터를 비교 분석하세요.
         
-        Data Snippets:
+        [데이터 요약]
         
-        [Main Data (Overview & Categories)]
+        [메인 데이터 (개요 및 카테고리)]
         {main_data}
         
-        [Top 10 Lists (Brand Mall & Affiliate)]
+        [Top 10 리스트 (브랜드몰 및 제휴사)]
         {top10_data}
         
-        Task:
-        Generate 4 key insights (Executive Summary) in Korean.
-        Format the output as a JSON array of objects with "title" and "content" keys.
+        [작업 지시]
+        4개의 핵심 인사이트를 도출하여 한국어로 작성해주세요.
+        결과는 반드시 "title"과 "content" 키를 가진 JSON 배열 형식이어야 합니다.
         
-        Example Format:
+        [스타일 제약사항]
+        '~있습니다'나 '~됩니다' 같은 경어체를 사용하지 마세요. 명사형 종결이나 '~음/함' 체를 사용하여 간결하게 작성하세요.
+        
+        [예시 포맷]
         [
-            {{ "title": "Insight Title 1", "content": "Detailed explanation..." }},
-            {{ "title": "Insight Title 2", "content": "Detailed explanation..." }}
+            {{ "title": "인사이트 제목 1", "content": "상세 설명..." }},
+            {{ "title": "인사이트 제목 2", "content": "상세 설명..." }}
         ]
         
-        Focus on:
-        1. Overall traffic trend (Growth/Decline).
-        2. Notable category performance (e.g., Flight vs Hotel).
-        3. Device share or specific channel performance if visible.
-        4. Co-brand partner performance.
+        [중점 분석 항목]
+        1. 전체 트래픽 추이 (성장/하락).
+        2. 주요 카테고리 성과 (예: 항공 vs 호텔).
+        3. 디바이스 점유율 또는 특정 채널 성과.
+        4. 코브랜드(제휴사) 파트너 성과.
         
-        Output ONLY the JSON array.
+        오직 JSON 배열만 출력하세요.
         """
         
         print("Calling AWS Bedrock...")
@@ -793,13 +804,155 @@ async def save_json(data: dict):
         # JSON 저장
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+            
+        return {"status": "success", "message": f"JSON saved to {filepath}", "path": filepath}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Email Service Integration
+# ==========================================
+from email_service import EmailService
+from fastapi.responses import HTMLResponse
+from generate_email_report import generate_html, create_trend_chart
+
+email_service = EmailService()
+
+@app.get("/recipients", response_class=HTMLResponse)
+async def get_recipients_page():
+    """수신자 관리 페이지 제공"""
+    try:
+        # server.py 파일이 있는 디렉토리 기준
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(base_dir, "templates", "recipients.html")
         
-        print(f"✓ JSON 저장 완료: {filepath}")
-        return {"success": True, "filepath": filepath, "filename": filename}
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Template not found at {template_path}")
+            
+        with open(template_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        print(f"템플릿 로드 에러: {e}")
+        raise HTTPException(status_code=500, detail=f"템플릿 로드 실패: {str(e)}")
+
+@app.get("/api/recipients")
+async def get_recipients():
+    """수신자 목록 조회"""
+    recipients = email_service.get_recipients()
+    stats = {
+        "total": len(recipients),
+        "active": len([r for r in recipients if r.get('active', True)]),
+        "inactive": len([r for r in recipients if not r.get('active', True)])
+    }
+    return {"status": "success", "recipients": recipients, "stats": stats}
+
+@app.post("/api/recipients")
+async def add_recipient(data: dict):
+    """수신자 추가"""
+    email = data.get('email')
+    if not email:
+        raise HTTPException(status_code=400, detail="이메일이 필요합니다.")
+    
+    success, message = email_service.add_recipient(email)
+    if success:
+        return {"status": "success", "message": message}
+    else:
+        return {"status": "error", "message": message}
+
+@app.post("/api/recipients/bulk")
+async def add_bulk_recipients(data: dict):
+    """대량 수신자 추가"""
+    emails_text = data.get('emails')
+    if not emails_text:
+        raise HTTPException(status_code=400, detail="이메일 목록이 필요합니다.")
+    
+    # 구분자 처리 (줄바꿈, 쉼표, 세미콜론)
+    import re
+    emails = re.split(r'[,\s;]+', emails_text)
+    emails = [e.strip() for e in emails if e.strip()]
+    
+    added_count = 0
+    errors = []
+    
+    for email in emails:
+        # 간단한 이메일 형식 검증
+        if '@' not in email:
+            errors.append(f"잘못된 형식: {email}")
+            continue
+            
+        success, msg = email_service.add_recipient(email)
+        if success:
+            added_count += 1
+        else:
+            if "이미 존재" not in msg: # 중복은 에러로 치지 않음 (선택적)
+                errors.append(f"{email}: {msg}")
+    
+    return {
+        "status": "success", 
+        "message": f"{added_count}명 추가 완료", 
+        "result": {"added": added_count, "errors": errors}
+    }
+
+@app.delete("/api/recipients/{email}")
+async def remove_recipient(email: str):
+    """수신자 삭제"""
+    success, message = email_service.remove_recipient(email)
+    if success:
+        return {"status": "success", "message": message}
+    else:
+        return {"status": "error", "message": message}
+
+@app.post("/api/recipients/sync")
+async def sync_recipients_to_env():
+    """.env 파일에 수신자 동기화"""
+    success, message = email_service.sync_to_env()
+    if success:
+        return {"status": "success", "message": message}
+    else:
+        return {"status": "error", "message": message}
+
+@app.post("/api/recipients/import-env")
+async def import_recipients_from_env(data: dict):
+    """.env 파일에서 수신자 가져오기"""
+    overwrite = data.get('overwrite', False)
+    success, message = email_service.import_from_env(overwrite)
+    if success:
+        return {"status": "success", "message": message}
+    else:
+        return {"status": "error", "message": message}
+
+
+@app.post("/send-email")
+async def send_email_endpoint(data: dict):
+    """이메일 생성 및 발송"""
+    try:
+        # 1. HTML 생성
+        print("이메일용 HTML 생성 시작...")
+        charts = {}
+        trend_data = data.get('trend', [])
+        charts['trend'] = create_trend_chart(trend_data)
         
+        html_content = generate_html(data, charts)
+        
+        # 2. HTML 파일 저장 (email 폴더)
+        title = data.get('meta', {}).get('title', 'Weekly Report')
+        saved_path = email_service.save_email_html(html_content, title)
+        print(f"이메일 HTML 저장됨: {saved_path}")
+        
+        # 3. 이메일 발송
+        print("이메일 발송 시작...")
+        # html_path를 전달하여 이력에 저장되도록 함
+        success, message = email_service.send_email(title, html_content, html_path=saved_path)
+        
+        if success:
+            return {"status": "success", "message": message, "html_path": saved_path}
+        else:
+            return {"status": "error", "message": message, "html_path": saved_path}
+            
     except Exception as e:
         error_msg = traceback.format_exc()
-        print(f"JSON 저장 오류: {error_msg}")
+        print(f"이메일 발송 중 오류: {e}")
+        print(error_msg)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/save-html")
@@ -827,6 +980,31 @@ async def save_html(request: dict):
     except Exception as e:
         error_msg = traceback.format_exc()
         print(f"HTML 저장 오류: {error_msg}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/email/history")
+async def get_email_history():
+    """발송된 이메일 히스토리 조회"""
+    print(f"[{datetime.now()}] 이메일 히스토리 조회 요청")
+    try:
+        history = email_service.get_history()
+        print(f"[{datetime.now()}] 히스토리 {len(history)}건 반환")
+        return {"status": "success", "history": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/email/resend/{history_id}")
+async def resend_email(history_id: str):
+    """이메일 재발송"""
+    try:
+        success, message = email_service.resend_email(history_id)
+        
+        if success:
+            return {"status": "success", "message": message}
+        else:
+            return {"status": "error", "message": message}
+            
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
