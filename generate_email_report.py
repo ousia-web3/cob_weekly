@@ -353,17 +353,17 @@ def generate_html(data, charts):
                     <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         <tr>
                             <!-- Brand Mall -->
-                            <td width="33%" valign="top" style="padding: 0 10px 0 0;">
+                            <td width="33%" valign="top" style="padding: 0 10px 0 0; height: 100%;">
                                 {create_detailed_top10_card(brand_mall_data, '브랜드몰 TOP 10', '#6366f1')}
                             </td>
 
                             <!-- Affiliate -->
-                            <td width="34%" valign="top" style="padding: 0 5px;">
+                            <td width="34%" valign="top" style="padding: 0 5px; height: 100%;">
                                 {create_detailed_top10_card(affiliate_data, '제휴사 TOP 10', '#10b981')}
                             </td>
 
                             <!-- Official Center -->
-                            <td width="33%" valign="top" style="padding: 0 0 0 10px;">
+                            <td width="33%" valign="top" style="padding: 0 0 0 10px; height: 100%;">
                                 {create_detailed_top10_card(official_data, '공식인증예약센터 TOP 10', '#f97316')}
                             </td>
                         </tr>
@@ -665,32 +665,44 @@ def create_detailed_top10_card(data_info, title, header_color):
     growth_display = f"{growth_icon} {abs(growth)}%" if growth != 0 else "0%"
 
     html = f"""
-    <div style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.03); height: 100%;">
-        <div style="background-color: {header_color}; padding: 16px; color: #ffffff;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <h4 style="margin: 0; font-size: 13px; font-weight: bold;">{title}</h4>
-                <span style="background-color: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TOP 10</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                <div>
-                    <div style="font-size: 10px; opacity: 0.8; margin-bottom: 2px;">Total UV</div>
-                    <div style="font-size: 18px; font-weight: bold;">{total_uv:,}</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 10px; opacity: 0.8; margin-bottom: 2px;">전주대비</div>
-                    <div style="font-size: 13px; font-weight: bold;">{growth_display}</div>
-                </div>
-            </div>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-            <thead style="background-color: {BG_COLOR}; font-weight: 600; font-size: 11px;">
-                <tr>
-                    <th style="padding: 6px 10px; text-align: center; color: #999; width: 35px;">순위</th>
-                    <th style="padding: 6px 10px; text-align: left; color: #999;">업체명</th>
-                    <th style="padding: 6px 10px; text-align: right; color: #999;">UV</th>
-                </tr>
-            </thead>
-            <tbody>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+        <tr>
+            <td style="background-color: {header_color}; padding: 16px; color: #ffffff;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td>
+                            <h4 style="margin: 0; font-size: 13px; font-weight: bold;">{title}</h4>
+                        </td>
+                        <td align="right">
+                            <span style="background-color: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TOP 10</span>
+                        </td>
+                    </tr>
+                </table>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 8px;">
+                    <tr>
+                        <td valign="bottom">
+                            <div style="font-size: 10px; opacity: 0.8; margin-bottom: 2px;">Total UV</div>
+                            <div style="font-size: 18px; font-weight: bold;">{total_uv:,}</div>
+                        </td>
+                        <td align="right" valign="bottom">
+                            <div style="font-size: 10px; opacity: 0.8; margin-bottom: 2px;">전주대비</div>
+                            <div style="font-size: 13px; font-weight: bold;">{growth_display}</div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead style="background-color: {BG_COLOR}; font-weight: 600; font-size: 11px;">
+                        <tr>
+                            <th style="padding: 8px 10px; text-align: center; color: #999; width: 35px; height: 32px;">순위</th>
+                            <th style="padding: 8px 10px; text-align: left; color: #999; height: 32px;">업체명</th>
+                            <th style="padding: 8px 10px; text-align: right; color: #999; height: 32px;">UV</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     """
 
     for item in items:
@@ -699,17 +711,19 @@ def create_detailed_top10_card(data_info, title, header_color):
         uv = item.get('uv', 0)
 
         html += f"""
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 6px 10px; text-align: center; font-weight: 600; color: #999;">{rank}</td>
-                <td style="padding: 6px 10px; color: {TEXT_COLOR}; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{name}">{name}</td>
-                <td style="padding: 6px 10px; text-align: right; font-weight: 600; color: {TEXT_COLOR};">{uv:,}</td>
-            </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 8px 10px; text-align: center; font-weight: 600; color: #999; height: 34px;">{rank}</td>
+                            <td style="padding: 8px 10px; color: {TEXT_COLOR}; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 34px;" title="{name}">{name}</td>
+                            <td style="padding: 8px 10px; text-align: right; font-weight: 600; color: {TEXT_COLOR}; height: 34px;">{uv:,}</td>
+                        </tr>
         """
 
     html += """
-            </tbody>
-        </table>
-    </div>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
     """
 
     return html
