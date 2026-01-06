@@ -14,8 +14,9 @@ build/
 .env
 .env.local
 
-# Data files
-data/
+# Data files (exclude content but keep structure)
+data/**/*
+!data/**/.gitkeep
 
 # Logs
 *.log
