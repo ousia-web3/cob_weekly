@@ -1,17 +1,95 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
 
 const GeneratorControls = ({ onDataUpload, onSummaryUpload, onTitleChange, status }) => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [week, setWeek] = useState(1);
   const [autoTitle, setAutoTitle] = useState('');
+  
+  // Date Range State
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [dateRangeText, setDateRangeText] = useState('');
+
+  // Helper to format date as YYYY.MM.DD
+  const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}.${m}.${d}`;
+  };
+
+  // Helper to format date as YYYY-MM-DD for input type="date"
+  const formatDateForInput = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
 
   useEffect(() => {
-    const title = `${year}년 ${month}월 ${week}주차 주간 UV 레포트현황`;
+    // Calculate Date Range based on Year, Month, Week
+    // Logic: Find the 1st day of the month. Find the Monday of that week. Add (Week-1)*7 days.
+    const firstDayOfMonth = new Date(year, month - 1, 1);
+    const dayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon, ...
+    
+    // Calculate offset to get to the Monday of the week containing the 1st
+    // If 1st is Mon(1), offset 0. If Tue(2), offset -1. ... If Sun(0), offset -6.
+    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    
+    const week1Mon = new Date(firstDayOfMonth);
+    week1Mon.setDate(firstDayOfMonth.getDate() + diffToMon);
+    
+    const start = new Date(week1Mon);
+    start.setDate(week1Mon.getDate() + (week - 1) * 7);
+    
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6); // Sunday
+    
+    const startStr = formatDate(start);
+    const endStr = formatDate(end);
+    const rangeText = `${startStr} ~ ${endStr}`;
+    
+    setStartDate(formatDateForInput(start));
+    setEndDate(formatDateForInput(end));
+    setDateRangeText(rangeText);
+
+    const title = `[${year}년 ${month}월 ${week}주차] 코브랜드채널 주요 영역별 UV 레포트 공유`;
     setAutoTitle(title);
-    onTitleChange({ year, month, week, title });
+    
+    // Pass dateRangeText to parent
+    onTitleChange({ year, month, week, title, dateRange: rangeText });
   }, [year, month, week, onTitleChange]);
+
+  const handleDateRangeTextChange = (e) => {
+    setDateRangeText(e.target.value);
+    onTitleChange({ year, month, week, title: autoTitle, dateRange: e.target.value });
+  };
+
+  const handleStartDateChange = (e) => {
+    const newStart = e.target.value;
+    setStartDate(newStart);
+    if (newStart && endDate) {
+      const startObj = new Date(newStart);
+      const endObj = new Date(endDate);
+      const rangeText = `${formatDate(startObj)} ~ ${formatDate(endObj)}`;
+      setDateRangeText(rangeText);
+      onTitleChange({ year, month, week, title: autoTitle, dateRange: rangeText });
+    }
+  };
+
+  const handleEndDateChange = (e) => {
+    const newEnd = e.target.value;
+    setEndDate(newEnd);
+    if (startDate && newEnd) {
+      const startObj = new Date(startDate);
+      const endObj = new Date(newEnd);
+      const rangeText = `${formatDate(startObj)} ~ ${formatDate(endObj)}`;
+      setDateRangeText(rangeText);
+      onTitleChange({ year, month, week, title: autoTitle, dateRange: rangeText });
+    }
+  };
 
   const handleDataUpload = (e) => {
     const file = e.target.files[0];
@@ -67,6 +145,44 @@ const GeneratorControls = ({ onDataUpload, onSummaryUpload, onTitleChange, statu
         </div>
       </div>
 
+      {/* Date Range Configuration */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-1">기간 설정 (자동 생성 및 수정 가능)</label>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-grow">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Calendar className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={dateRangeText}
+              onChange={handleDateRangeTextChange}
+              className="pl-10 block w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="YYYY.MM.DD ~ YYYY.MM.DD"
+            />
+          </div>
+          
+          {/* Hidden/Small Date Pickers for Selection */}
+          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded border border-gray-200">
+            <input 
+              type="date" 
+              value={startDate}
+              onChange={handleStartDateChange}
+              className="text-xs border-none bg-transparent focus:ring-0 p-1"
+              title="시작일 선택"
+            />
+            <span className="text-gray-400">~</span>
+            <input 
+              type="date" 
+              value={endDate}
+              onChange={handleEndDateChange}
+              className="text-xs border-none bg-transparent focus:ring-0 p-1"
+              title="종료일 선택"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="mb-6 p-3 bg-gray-50 rounded-md border border-gray-200">
         <span className="text-sm text-gray-500 mr-2">자동 생성 타이틀:</span>
         <span className="font-bold text-indigo-600">{autoTitle}</span>
@@ -74,7 +190,8 @@ const GeneratorControls = ({ onDataUpload, onSummaryUpload, onTitleChange, statu
 
       {/* File Uploads */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">주간 데이터 파일 업로드 (.xlsx)</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">주간 데이터 파일 업로드 (.xlsx)</label>
+        <p className="text-xs text-slate-500 mb-2">파일명형식 : 2025_COB_01.xlsx, 작업연도_코브랜드채널구분_주차</p>
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors relative">
           <input 
             type="file" 
