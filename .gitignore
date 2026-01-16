@@ -58,3 +58,7 @@ dashboard/.vite/
 
 # Claude artifacts
 .claude/
+
+# AI Rules Logs
+logs/
+!logs/ERROR_HISTORY.md

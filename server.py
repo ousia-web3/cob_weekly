@@ -143,24 +143,27 @@ def extract_top20_from_cells(df):
             uv = 0
         
         # 증감률
-        growth_val = df.iloc[growth_row, col_idx]
-        try:
-            if isinstance(growth_val, str):
-                # 문자열인 경우 (예: "▲5.3%", "▼0.2%")
-                growth_str = growth_val.replace('%', '').strip()
-                if '▲' in growth_str:
-                    growth = float(growth_str.replace('▲', '').strip())
-                elif '▼' in growth_str:
-                    growth = -float(growth_str.replace('▼', '').strip())
+        if growth_row < len(df):
+            growth_val = df.iloc[growth_row, col_idx]
+            try:
+                if isinstance(growth_val, str):
+                    # 문자열인 경우 (예: "▲5.3%", "▼0.2%")
+                    growth_str = growth_val.replace('%', '').strip()
+                    if '▲' in growth_str:
+                        growth = float(growth_str.replace('▲', '').strip())
+                    elif '▼' in growth_str:
+                        growth = -float(growth_str.replace('▼', '').strip())
+                    else:
+                        growth = float(growth_str)
                 else:
-                    growth = float(growth_str)
-            else:
-                # 소수 형태인 경우 (예: -0.601781 = -60.1781%)
-                growth = float(growth_val) * 100
-            
-            # 소수점 1자리로 반올림
-            growth = round(growth, 1)
-        except:
+                    # 소수 형태인 경우 (예: -0.601781 = -60.1781%)
+                    growth = float(growth_val) * 100
+                
+                # 소수점 1자리로 반올림
+                growth = round(growth, 1)
+            except:
+                growth = 0
+        else:
             growth = 0
         
         if name and uv > 0:

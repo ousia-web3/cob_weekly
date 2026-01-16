@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agoda Hotel Crawler - User Manual</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --agoda-primary: #5865F2; /* Example color */
+            --agoda-secondary: #FF5722;
+        }
+        body {
+            font-family: 'Google Sans', 'Noto Sans KR', sans-serif;
+            background-color: #f8f9fa;
+            overflow: hidden;
+            color: #3c4043;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .nav-item.active {
+            background-color: #e8f0fe;
+            color: #1967d2;
+            border-right: 4px solid #1967d2;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        #canvas-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .content-panel {
+            z-index: 10;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            height: 100%;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: #dadce0;
+            border-radius: 10px;
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        code {
+            background-color: #f1f3f4;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #d93025;
+        }
+        pre {
+            background-color: #202124;
+            color: #e8eaed;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+    </style>
+</head>
+<body class="flex h-screen">
+
+    <div id="canvas-container"></div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="w-80 glass h-full flex flex-col border-r border-gray-200 z-20 shadow-xl">
+        <div class="p-6">
+            <div class="flex items-center gap-2 mb-2">
+                <!-- Icon -->
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">A</div>
+                <h1 class="text-xl font-bold text-gray-800 tracking-tight">Agoda Crawler</h1>
+            </div>
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">User Manual & Guide</p>
+        </div>
+
+        <div id="sidebar-nav" class="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+            <!-- Navigation Items -->
+        </div>
+
+        <div class="p-4 border-t border-gray-100">
+            <div class="bg-blue-50 p-4 rounded-xl">
+                <p class="text-[11px] text-blue-700 leading-snug font-medium">
+                    "데이터 수집의 자동화로<br>비즈니스 인사이트를 발견하세요."
+                </p>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 relative overflow-hidden flex flex-col bg-white/50">
+        <header class="h-16 flex items-center justify-between px-8 z-20 border-b border-white/20 glass">
+            <div class="flex items-center gap-4">
+                <div id="breadcrumb" class="text-xs font-bold text-gray-500 uppercase tracking-widest">Manual / Intro</div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Version 1.0</span>
+            </div>
+        </header>
+
+        <div id="main-content" class="flex-1 relative">
+            <!-- Panels rendered by JS -->
+        </div>
+    </main>
+
+    <script>
+        let currentView = 'intro';
+
+        const CONTENT = {
+            intro: {
+                title: 'Agoda Hotel Crawler',
+                subtitle: '프로젝트 개요',
+                desc: '아고다(Agoda) 웹사이트에서 특정 도시의 호텔 정보를 자동으로 수집하는 강력한 도구입니다. 호텔 목록, 기본 정보, 객실 정책, FAQ 등 다양한 데이터를 수집하여 분석 가능한 형태로 제공합니다.',
+                cards: [
+                    { title: '웹 인터페이스', desc: '브라우저에서 간편하게 작업을 등록하고 모니터링할 수 있는 직관적인 대시보드를 제공합니다.' },
+                    { title: '다양한 수집 모드', desc: 'Hotel List, Info, Policies(신규), FAQ, Room Names 등 목적에 맞는 다양한 크롤링 모드를 지원합니다.' },
+                    { title: '안정성 & 자동화', desc: '시스템 절전 방지, 세션 자동 복구, 이어하기(Resume) 기능을 통해 장시간 작업도 안정적으로 수행합니다.' }
+                ]
+            },
+            setup: {
+                title: '설치 및 실행 환경',
+                subtitle: 'Getting Started',
+                items: [
+                    { title: '필수 요구사항', desc: 'Windows 10/11 (권장), Python 3.8 이상, 최신 Chrome Browser가 필요합니다.' },
+                    { title: '실행 방법', desc: `터미널에서 <span class="inline-flex items-center bg-gray-100 rounded px-2 py-1 mx-1"><code class="bg-transparent p-0">python app.py</code><button onclick="copyToClipboard('python app.py', this)" class="ml-2 text-gray-400 hover:text-blue-600 transition-colors" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button></span> 명령어로 서버를 실행하고, 브라우저에서 <span class="inline-flex items-center bg-gray-100 rounded px-2 py-1 mx-1"><code class="bg-transparent p-0">http://localhost:8000</code><button onclick="copyToClipboard('http://localhost:8000', this)" class="ml-2 text-gray-400 hover:text-blue-600 transition-colors" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button></span> 으로 접속하세요.` }
+                ]
+            },
+            usage: {
+                title: '웹 인터페이스 사용법',
+                subtitle: 'Web Dashboard Guide',
+                steps: [
+                    { num: 1, title: '작업 등록 (Add Task)', desc: '도시 코드(예: 16440), 체크인/아웃 날짜, 작업 유형을 선택하여 등록합니다.' },
+                    { num: 2, title: '작업 모니터링', desc: 'Status(Pending, Running...)를 확인하고 View Logs 버튼으로 실시간 로그를 봅니다.' },
+                    { num: 3, title: '결과 다운로드', desc: '작업이 완료되면 Result Files 링크를 클릭하여 CSV/JSON 파일을 다운로드합니다.' }
+                ]
+            },
+            cli: {
+                title: '고급 사용법 (CLI)',
+                subtitle: 'Command Line Interface',
+                desc: '개발자나 세밀한 제어가 필요한 경우 터미널에서 직접 스크립트를 실행할 수 있습니다.',
+                commands: [
+                    { title: '호텔 리스트 수집', cmd: 'python agoda_crawler_v2.py --task-type hotel_list --city 16440' },
+                    { title: '상세 정책 수집 (추천)', cmd: 'python extract_hotel_policies.py --city 16440', note: 'CSV 파일이 실시간으로 업데이트됩니다.' },
+                    { title: 'FAQ 수집', cmd: 'python agoda_faq_crawler.py --task-type faq --city 16440' }
+                ]
+            },
+            data: {
+                title: '데이터 구조 및 저장 위치',
+                subtitle: 'Data Organization',
+                desc: '모든 데이터는 <code>data/</code> 폴더 내에 체계적으로 저장됩니다.',
+                table: [
+                    { type: '호텔 리스트', path: 'data/hotel_list/', format: 'JSON', desc: '수집 대상 URL 목록' },
+                    { type: '상세 정책', path: 'data/policies/', format: 'CSV, JSON', desc: '객실별 아동/유아/간이침대 정책' },
+                    { type: '기본 정보 (미사용)', path: 'data/hotel_info/', format: 'CSV', desc: '호텔명, ID, 기본 아동 정책 (현재 미사용)' },
+                    { type: 'FAQ', path: 'data/faq/', format: 'CSV', desc: '호텔별 자주 묻는 질문' },
+                    { type: '호텔 설명', path: 'data/description/', format: 'CSV', desc: '호텔 소개 텍스트' },
+                    { type: '객실 명 (미사용)', path: 'data/room_names/', format: 'CSV', desc: '객실 타입 목록 (현재 미사용)' }
+                ],
+                naming: '파일명 규칙: <code>hotel_list_{도시코드}_{체크인}_{체크아웃}.json</code> 등의 패턴을 따릅니다.'
+            },
+            trouble: {
+                title: '문제 해결',
+                subtitle: 'Troubleshooting',
+                qna: [
+                    { q: '브라우저가 자꾸 꺼지거나 멈춥니다.', a: '시스템 절전 모드가 켜져 있는지 확인하세요. 노트북 덮개를 닫으면 멈출 수 있습니다.' },
+                    { q: 'Chrome이 제어되고 있습니다 문구가 뜹니다.', a: '정상입니다. 자동화 도구가 브라우저를 제어하고 있다는 뜻입니다.' },
+                    { q: '데이터가 0건으로 나옵니다.', a: '로그 파일을 확인하세요. 아고다 웹사이트 구조 변경이나 네트워크 문제일 수 있습니다.' },
+                    { q: 'CSV 파일이 깨져서 보입니다.', a: '엑셀에서 열 때 인코딩을 UTF-8로 지정하여 열어주세요.' }
+                ]
+            },
+            source: {
+                title: '소스 코드 구조',
+                subtitle: 'Developer Guide',
+                files: [
+                    { name: 'app.py', desc: '웹 서버 메인 (FastAPI)' },
+                    { name: 'agoda_crawler_v2.py', desc: '메인 크롤러 (리스트/기본정보)' },
+                    { name: 'extract_hotel_policies.py', desc: '정책 추출기 (핵심 기능)' },
+                    { name: 'agoda_faq_crawler.py', desc: 'FAQ/설명 수집기' },
+                    { name: 'get_room_names.py', desc: '객실명 수집기' },
+                    { name: 'system_utils.py', desc: '시스템 유틸리티 (절전 방지)' }
+                ]
+            }
+        };
+
+        function updateSidebar() {
+            const nav = document.getElementById('sidebar-nav');
+            const items = [
+                { id: 'intro', label: '1. 프로젝트 개요' },
+                { id: 'setup', label: '2. 설치 및 실행 환경' },
+                { id: 'usage', label: '3. 웹 인터페이스 사용법' },
+                { id: 'cli', label: '4. 고급 사용법 (CLI)' },
+                { id: 'data', label: '5. 데이터 구조' },
+                { id: 'trouble', label: '6. 문제 해결' },
+                { id: 'source', label: '7. 소스 코드 구조' }
+            ];
+
+            nav.innerHTML = items.map(item => `
+                <button onclick="navigate('${item.id}')" class="nav-item ${currentView===item.id?'active':''} w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-gray-100 text-left">
+                    <span>${item.label}</span>
+                </button>
+            `).join('');
+        }
+
+        function updateContent() {
+            const container = document.getElementById('main-content');
+            const data = CONTENT[currentView];
+            
+            let html = `<div class="content-panel fade-in p-10 max-w-5xl mx-auto">`;
+            
+            // Header
+            html += `
+                <div class="mb-10">
+                    <span class="text-blue-600 font-bold tracking-widest uppercase text-xs mb-2 block">${data.subtitle}</span>
+                    <h2 class="text-4xl font-bold text-gray-900 mb-4">${data.title}</h2>
+                    ${data.desc ? `<p class="text-lg text-gray-600 leading-relaxed">${data.desc}</p>` : ''}
+                </div>
+            `;
+
+            // Dynamic Content Generation
+            if (currentView === 'intro') {
+                html += `<div class="grid grid-cols-1 md:grid-cols-3 gap-6">`;
+                data.cards.forEach(card => {
+                    html += `
+                        <div class="glass p-6 rounded-2xl card-shadow border-t-4 border-blue-500">
+                            <h3 class="font-bold text-gray-800 mb-3 text-lg">${card.title}</h3>
+                            <p class="text-sm text-gray-600 leading-relaxed">${card.desc}</p>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            } 
+            else if (currentView === 'setup') {
+                html += `<div class="space-y-6">`;
+                data.items.forEach(item => {
+                    html += `
+                        <div class="bg-white p-6 rounded-2xl card-shadow border border-gray-100">
+                            <h3 class="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-green-500"></span> ${item.title}
+                            </h3>
+                            <p class="text-gray-600">${item.desc}</p>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            else if (currentView === 'usage') {
+                html += `<div class="space-y-4">`;
+                data.steps.forEach(step => {
+                    html += `
+                        <div class="flex gap-6 items-start bg-white/60 p-6 rounded-2xl hover:bg-white transition-colors">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg flex-shrink-0">${step.num}</div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 mb-2 text-lg">${step.title}</h3>
+                                <p class="text-gray-600">${step.desc}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            else if (currentView === 'cli') {
+                html += `<div class="space-y-8 mt-8">`;
+                data.commands.forEach((cmd, index) => {
+                    html += `
+                        <div class="relative group">
+                            <h3 class="font-bold text-gray-800 mb-3 border-l-4 border-purple-500 pl-3">${cmd.title}</h3>
+                            <div class="relative">
+                                <pre class="pr-12"><code>${cmd.cmd}</code></pre>
+                                <button onclick="copyToClipboard('${cmd.cmd.replace(/'/g, "\\'")}', this)" class="absolute top-2 right-2 p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-gray-400 hover:text-white" title="Copy to clipboard">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            ${cmd.note ? `<p class="text-sm text-gray-500 italic mt-2">💡 ${cmd.note}</p>` : ''}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            else if (currentView === 'data') {
+                html += `
+                    <div class="bg-white rounded-2xl overflow-hidden card-shadow border border-gray-100 mb-8">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500">
+                                    <th class="p-4 font-bold">데이터 종류</th>
+                                    <th class="p-4 font-bold">폴더 위치</th>
+                                    <th class="p-4 font-bold">파일 형식</th>
+                                    <th class="p-4 font-bold">설명</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-gray-700">
+                                ${data.table.map(row => `
+                                    <tr class="border-b border-gray-100 hover:bg-blue-50/50 transition-colors">
+                                        <td class="p-4 font-bold text-blue-600">${row.type}</td>
+                                        <td class="p-4 font-mono text-xs bg-gray-50/50">${row.path}</td>
+                                        <td class="p-4">${row.format}</td>
+                                        <td class="p-4 text-gray-600">${row.desc}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-100 text-sm text-yellow-800">
+                        ${data.naming}
+                    </div>
+                `;
+            }
+            else if (currentView === 'trouble') {
+                html += `<div class="grid grid-cols-1 gap-6">`;
+                data.qna.forEach(item => {
+                    html += `
+                        <div class="glass p-6 rounded-2xl card-shadow">
+                            <h3 class="font-bold text-red-500 mb-2 flex items-center gap-2">
+                                <span class="text-xs bg-red-100 px-2 py-1 rounded">Q</span> ${item.q}
+                            </h3>
+                            <p class="text-gray-700 pl-8 leading-relaxed">${item.a}</p>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            else if (currentView === 'source') {
+                html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+                data.files.forEach(file => {
+                    html += `
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 flex items-center justify-between hover:border-blue-300 transition-colors">
+                            <span class="font-mono text-sm font-bold text-gray-800">${file.name}</span>
+                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">${file.desc}</span>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            html += `</div>`; // End content-panel
+            container.innerHTML = html;
+        }
+
+        function navigate(view) {
+            currentView = view;
+            updateSidebar();
+            updateContent();
+            document.getElementById('breadcrumb').innerText = `Manual / ${CONTENT[view].title}`;
+            update3DScene(view);
+        }
+
+        // --- 3D Background ---
+        let scene, camera, renderer, crystal, particles;
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0x4285f4, 0.8);
+            dirLight.position.set(10, 10, 10);
+            scene.add(dirLight);
+
+            // Objects
+            const geometry = new THREE.IcosahedronGeometry(3, 0);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x5865F2, 
+                wireframe: true, 
+                transparent: true, 
+                opacity: 0.15 
+            });
+            crystal = new THREE.Mesh(geometry, material);
+            scene.add(crystal);
+
+            // Particles
+            const particlesGeom = new THREE.BufferGeometry();
+            const pos = [];
+            for(let i=0; i<300; i++) {
+                pos.push((Math.random()-0.5)*40, (Math.random()-0.5)*40, (Math.random()-0.5)*40);
+            }
+            particlesGeom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            particles = new THREE.Points(particlesGeom, new THREE.PointsMaterial({ color: 0xa0a0a0, size: 0.05 }));
+            scene.add(particles);
+
+            camera.position.z = 12;
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(crystal) {
+                crystal.rotation.y += 0.002;
+                crystal.rotation.x += 0.001;
+            }
+            if(particles) {
+                particles.rotation.y -= 0.0005;
+            }
+            renderer.render(scene, camera);
+        }
+
+        function update3DScene(view) {
+            if (!crystal) return;
+            
+            // Simple camera movements based on view
+            const targets = {
+                intro: { z: 12, rotZ: 0 },
+                setup: { z: 14, rotZ: 0.5 },
+                usage: { z: 10, rotZ: 1 },
+                cli: { z: 15, rotZ: 1.5 },
+                data: { z: 12, rotZ: 2 },
+                trouble: { z: 13, rotZ: 2.5 },
+                source: { z: 11, rotZ: 3 }
+            };
+
+            const t = targets[view] || targets.intro;
+            gsap.to(camera.position, { duration: 1.5, z: t.z });
+            gsap.to(crystal.rotation, { duration: 1.5, z: t.rotZ });
+        }
+
+        function copyToClipboard(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            });
+        }
+
+        window.onload = () => {
+            init3D();
+            navigate('intro');
+        };
+
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+    </script>
+</body>
+</html>
