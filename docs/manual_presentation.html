@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>코브랜드 주간 현황 리포트 생성기 매뉴얼</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --text-color: #1f2937;
+            --bg-color: #ffffff;
+            --slide-bg: #f3f4f6;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #111827;
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slide-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 4rem 6rem;
+            background-color: var(--bg-color);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease-in-out;
+            transform: translateX(50px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+            z-index: 1;
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, #2563eb, #7c3aed);
+        }
+
+        .slide::after {
+            content: 'Co-Brand Weekly Report Generator';
+            position: absolute;
+            bottom: 1.5rem;
+            right: 2rem;
+            font-size: 0.875rem;
+            color: #9ca3af;
+            font-weight: 500;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(to right, #2563eb, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: #1f2937;
+            margin-bottom: 2rem;
+            border-bottom: 3px solid #e5e7eb;
+            padding-bottom: 1rem;
+            width: fit-content;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            color: #4b5563;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            font-size: 1.25rem;
+            line-height: 1.8;
+            color: #374151;
+            margin-bottom: 1.5rem;
+            max-width: 90%;
+        }
+
+        ul, ol {
+            margin-left: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        li {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            margin-bottom: 0.8rem;
+            color: #374151;
+        }
+
+        code {
+            background-color: #f3f4f6;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Fira Code', monospace;
+            color: #dc2626;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 1rem;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 1.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .page-number {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 2rem;
+            font-size: 1rem;
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .highlight-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .slide { padding: 2rem; }
+            h1 { font-size: 2rem; }
+            h2 { font-size: 1.5rem; }
+            p, li { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="slide-container">
+    <!-- Slide 1: Title -->
+    <div class="slide active" id="slide-1">
+        <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+            <h1>코브랜드 주간 현황<br>리포트 생성기</h1>
+            <p style="font-size: 1.5rem; color: #6b7280;">Co-Brand Weekly Report Generator</p>
+            <div style="margin-top: 3rem; padding: 1rem 2rem; background: #f3f4f6; border-radius: 1rem;">
+                <p style="margin: 0; font-weight: 600;">사용자 매뉴얼 v1.2</p>
+            </div>
+        </div>
+        <div class="page-number">1 / 10</div>
+    </div>
+
+    <!-- Slide 2: Overview -->
+    <div class="slide" id="slide-2">
+        <h2>1. 프로젝트 개요</h2>
+        <p>엑셀 형태의 주간 트래픽 데이터를 분석하여 시각화된 대시보드를 제공하고, AI 기반의 인사이트가 포함된 HTML 이메일 리포트를 자동 생성 및 발송하는 시스템입니다.</p>
+        
+        <h3>주요 기능</h3>
+        <ul>
+            <li><strong>📊 엑셀 데이터 분석</strong>: 주간 트래픽 파일 자동 파싱</li>
+            <li><strong>🤖 AI 인사이트</strong>: AWS Bedrock (Claude 3.5) 기반 핵심 요약</li>
+            <li><strong>📈 시각화 대시보드</strong>: UV, 증감률, 디바이스 점유율 차트</li>
+            <li><strong>📧 이메일 리포트</strong>: HTML 이메일 자동 생성 및 발송</li>
+            <li><strong>👥 수신자 관리</strong>: 간편한 수신자 목록 관리 및 동기화</li>
+        </ul>
+        <div class="page-number">2 / 10</div>
+    </div>
+
+    <!-- Slide 3: Requirements -->
+    <div class="slide" id="slide-3">
+        <h2>2. 시스템 요구사항 및 설치</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h3>필수 요구사항</h3>
+                <ul>
+                    <li><strong>Python</strong>: 3.8 이상</li>
+                    <li><strong>Node.js</strong>: 16.0 이상</li>
+                    <li><strong>AWS 계정</strong>: Bedrock 접근 권한</li>
+                    <li><strong>SMTP</strong>: 이메일 발송 계정</li>
+                </ul>
+            </div>
+            <div>
+                <h3>설치 방법</h3>
+                <pre><code># 1. 백엔드 설정
+python -m venv venv
+pip install -r requirements.txt
+
+# 2. 프론트엔드 설정
+cd dashboard
+npm install</code></pre>
+            </div>
+        </div>
+        <div class="page-number">3 / 10</div>
+    </div>
+
+    <!-- Slide 4: Execution & Access -->
+    <div class="slide" id="slide-4">
+        <h2>3. 접속 및 실행 가이드</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h3>🖥️ 서버 실행 (관리자)</h3>
+                <p><code>start.bat</code> 파일 실행 시 서버와 브라우저가 자동 시작됩니다.</p>
+                <div class="highlight-box">
+                    <strong>관리자 접속 주소</strong><br>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                        <code id="addr-admin" style="font-size: 1.2rem;">http://localhost:5173</code>
+                        <button class="btn" style="padding: 0.2rem 0.8rem; font-size: 0.9rem;" onclick="copyToClipboard('addr-admin')">복사</button>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <h3>🔗 내부 임직원 접속</h3>
+                <p>사내망의 다른 PC나 모바일에서 접속 가능합니다.</p>
+                <div class="highlight-box" style="background: #f0fdf4; border-color: #bbf7d0;">
+                    <strong>사내망 접속 주소</strong><br>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                        <code id="addr-internal" style="font-size: 1.2rem; color: #15803d;">http://192.168.82.105:5173</code>
+                        <button class="btn" style="padding: 0.2rem 0.8rem; font-size: 0.9rem; background-color: #15803d;" onclick="copyToClipboard('addr-internal')">복사</button>
+                    </div>
+                    <span style="font-size: 0.9rem; color: #666; display: block; margin-top: 0.5rem;">※ 관리자 PC 방화벽(8001, 5173) 허용 필요</span>
+                </div>
+            </div>
+        </div>
+        <div class="page-number">4 / 10</div>
+    </div>
+
+    <!-- Slide 5: Usage - Upload -->
+    <div class="slide" id="slide-5">
+        <h2>4. 사용 방법 - 엑셀 업로드</h2>
+        
+        <ol style="font-size: 1.3rem; line-height: 2;">
+            <li><strong>기간 설정</strong>: 상단 드롭다운에서 연도/월/주차 선택</li>
+            <li><strong>파일 업로드</strong>: 
+                <ul>
+                    <li>중앙 영역에 엑셀 파일 <strong>드래그 앤 드롭</strong></li>
+                    <li>또는 클릭하여 파일 선택</li>
+                </ul>
+            </li>
+            <li><strong>분석 시작</strong>: 
+                <ul>
+                    <li><strong>"분석 시작"</strong> 버튼 클릭</li>
+                    <li>진행률 바(Progress Bar) 확인</li>
+                </ul>
+            </li>
+        </ol>
+        <div class="page-number">5 / 10</div>
+    </div>
+
+    <!-- Slide 6: Preview UI (New) -->
+    <div class="slide" id="slide-6">
+        <h2>5. 대시보드 미리보기 UI</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h3>📊 핵심 지표 & 차트</h3>
+                <ul>
+                    <li><strong>KPI 카드</strong>: 전체 UV, 증감률, Best/Worst 카테고리</li>
+                    <li><strong>주간 추이</strong>: 트래픽 변화 그래프 (Area Chart)</li>
+                    <li><strong>점유율 차트</strong>: 디바이스(PC/Mobile) 및 채널별 비중</li>
+                </ul>
+            </div>
+            <div>
+                <h3>📋 상세 데이터 테이블</h3>
+                <ul>
+                    <li><strong>Top 20 리스트</strong>: 주요 대리점 성과 순위 (신규진입 표시)</li>
+                    <li><strong>카테고리별 상세</strong>: 패키지/항공/호텔 등 세부 실적
+                        <br><span style="font-size: 0.9em; color: #666;">(토글 버튼으로 펼치기/접기 가능)</span>
+                    </li>
+                    <li><strong>유형별 Top 10</strong>: 브랜드몰/제휴사/인증센터 순위</li>
+                </ul>
+            </div>
+        </div>
+        <div class="page-number">6 / 10</div>
+    </div>
+
+    <!-- Slide 7: Usage - AI & Body -->
+    <div class="slide" id="slide-7">
+        <h2>6. 사용 방법 - 요약 및 본문 작성</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h3>🤖 AI 핵심 요약 검수</h3>
+                <ul>
+                    <li><strong>자동 생성</strong>: 데이터 기반 4가지 인사이트</li>
+                    <li><strong>직접 수정</strong>: 텍스트 박스 클릭 후 내용 편집</li>
+                    <li>오타 수정 및 강조 내용 추가 가능</li>
+                </ul>
+            </div>
+            <div>
+                <h3>✍️ 메일 본문 작성</h3>
+                <ul>
+                    <li><strong>기능 활성화</strong>: "메일 본문 추가" 체크</li>
+                    <li><strong>에디터 사용</strong>: 인사말, 공지사항 작성</li>
+                    <li><strong>서식 적용</strong>: 굵게, 색상 등 스타일 적용</li>
+                </ul>
+            </div>
+        </div>
+        <div class="page-number">7 / 10</div>
+    </div>
+
+    <!-- Slide 8: Usage - Recipient & Send -->
+    <div class="slide" id="slide-8">
+        <h2>7. 사용 방법 - 수신자 및 발송</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h3>👥 수신자 관리</h3>
+                <ul>
+                    <li><strong>추가/삭제</strong>: 팝업에서 간편하게 관리</li>
+                    <li><strong>.env 동기화</strong>: 목록 영구 저장</li>
+                </ul>
+                <h3 style="margin-top: 2rem;">📧 이메일 발송</h3>
+                <ul>
+                    <li>우측 상단 <strong>"이메일 발송"</strong> 버튼 클릭</li>
+                    <li>발송 완료 알림 확인</li>
+                </ul>
+            </div>
+            <div style="background: #f9fafb; padding: 1.5rem; border-radius: 1rem;">
+                <h3>📜 발송 이력 및 재발송</h3>
+                <ul>
+                    <li>하단 <strong>"발송 이력"</strong> 섹션</li>
+                    <li>성공/실패 상태 확인</li>
+                    <li><strong>"보기"</strong>: 발송된 원본 HTML 확인</li>
+                    <li><strong>"재발송"</strong>: 즉시 재전송 (제목에 <code>[재발송]</code> 태그)</li>
+                </ul>
+            </div>
+        </div>
+        <div class="page-number">8 / 10</div>
+    </div>
+
+    <!-- Slide 9: Structure -->
+    <div class="slide" id="slide-9">
+        <h2>8. 프로젝트 구조</h2>
+        <pre><code style="font-size: 0.9rem;">cob_weekly/
+├── dashboard/          # React 프론트엔드
+│   ├── src/components/ # UI 컴포넌트
+│   └── package.json
+├── data/               # 데이터 저장소
+│   ├── email/          # 이메일 HTML 백업
+│   └── recipients.json # 수신자 목록
+├── docs/               # 프로젝트 문서
+├── server.py           # FastAPI 백엔드
+├── email_service.py    # 이메일 모듈
+└── start.bat           # 실행 스크립트</code></pre>
+        <div class="page-number">9 / 10</div>
+    </div>
+
+    <!-- Slide 10: Troubleshooting -->
+    <div class="slide" id="slide-10">
+        <h2>9. 트러블슈팅</h2>
+        
+        <div style="background: #fff7ed; padding: 1.5rem; border-radius: 0.5rem; border-left: 5px solid #f97316; margin-bottom: 1rem;">
+            <h3 style="margin-top: 0; color: #c2410c;">이메일 발송 실패 시</h3>
+            <p style="margin-bottom: 0;">.env 파일의 SMTP 설정을 확인하고, 사내 보안 정책으로 인한 포트 차단 여부를 점검하세요.</p>
+        </div>
+
+        <div style="background: #f0fdf4; padding: 1.5rem; border-radius: 0.5rem; border-left: 5px solid #22c55e; margin-bottom: 1rem;">
+            <h3 style="margin-top: 0; color: #15803d;">AI 인사이트 생성 실패 시</h3>
+            <p style="margin-bottom: 0;">AWS 자격 증명(Credentials)이 올바른지, Bedrock 접근 권한이 있는지 확인하세요.</p>
+        </div>
+
+        <div style="background: #eff6ff; padding: 1.5rem; border-radius: 0.5rem; border-left: 5px solid #3b82f6;">
+            <h3 style="margin-top: 0; color: #1d4ed8;">서버 연결 오류 시</h3>
+            <p style="margin-bottom: 0;">start.bat을 통해 백엔드(8001)와 프론트엔드(5173)가 모두 정상 실행되었는지 확인하세요.</p>
+        </div>
+        <div class="page-number">10 / 10</div>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="btn" id="prevBtn" onclick="prevSlide()">이전</button>
+    <button class="btn" id="nextBtn" onclick="nextSlide()">다음</button>
+</div>
+
+<script>
+    let currentSlide = 1;
+    const totalSlides = 10;
+
+    function showSlide(n) {
+        if (n < 1) n = 1;
+        if (n > totalSlides) n = totalSlides;
+        
+        currentSlide = n;
+
+        document.querySelectorAll('.slide').forEach(slide => {
+            slide.classList.remove('active');
+        });
+
+        document.getElementById('slide-' + currentSlide).classList.add('active');
+
+        document.getElementById('prevBtn').disabled = (currentSlide === 1);
+        document.getElementById('nextBtn').disabled = (currentSlide === totalSlides);
+    }
+
+    function nextSlide() {
+        showSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+        showSlide(currentSlide - 1);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === 'Space') {
+            nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+            prevSlide();
+        }
+    });
+
+    showSlide(1);
+
+    function copyToClipboard(elementId) {
+        const text = document.getElementById(elementId).innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('주소가 복사되었습니다: ' + text);
+        }).catch(err => {
+            console.error('복사 실패:', err);
+        });
+    }
+</script>
+
+</body>
+</html>
