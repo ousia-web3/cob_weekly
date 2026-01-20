@@ -5,7 +5,7 @@ import EmailBodyEditor from './components/EmailBodyEditor';
 import EmailHistory from './components/EmailHistory';
 import { parseExcel } from './utils/excelParser';
 import { downloadJSON, generateDashboardHTML } from './utils/exportUtils';
-import { Download, Save, Mail, Users } from 'lucide-react';
+import { Download, Save, Mail, Users, FileText } from 'lucide-react';
 
 function App() {
   // API URL을 현재 호스트네임에 맞춰 동적으로 설정 (localhost 또는 IP)
@@ -216,6 +216,43 @@ function App() {
     }));
   };
 
+  const handleRegenerateInsights = async () => {
+    if (!dashboardData || !dashboardData.aiContext) {
+      alert('재생성에 필요한 데이터 컨텍스트가 없습니다. 파일을 다시 업로드해주세요.');
+      return;
+    }
+
+    if (!confirm('핵심 요약을 다시 생성하시겠습니까? 기존 내용은 덮어씌워집니다.')) return;
+
+    setStatus({ type: 'loading', message: '핵심 요약을 재생성 중입니다...' });
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/regenerate-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dashboardData.aiContext)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server Error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      setDashboardData(prev => ({
+        ...prev,
+        aiInsight: result.insights
+      }));
+      
+      setStatus({ type: 'success', message: '핵심 요약이 재생성되었습니다.' });
+    } catch (error) {
+      console.error('Regeneration Error:', error);
+      setStatus({ type: 'error', message: `재생성 오류: ${error.message}` });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="w-full px-4 py-8">
@@ -224,13 +261,22 @@ function App() {
             <h1 className="text-3xl font-bold text-slate-900">코브랜드 주간 현황 대시보드 생성기</h1>
             <p className="text-slate-500 mt-2">엑셀 데이터를 업로드하여 주간 보고서를 생성하세요.</p>
           </div>
-          <button
-            onClick={() => window.open(`${API_BASE_URL}/recipients`, '_blank')}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 font-medium transition-colors shadow-sm"
-          >
-            <Users className="w-4 h-4" />
-            수신자 관리
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => window.open(`${API_BASE_URL}/recipients`, '_blank')}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 font-medium transition-colors shadow-sm"
+            >
+              <Users className="w-4 h-4" />
+              수신자 관리
+            </button>
+            <button
+              onClick={() => window.open(`${API_BASE_URL}/prompt-manager`, '_blank')}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 font-medium transition-colors shadow-sm"
+            >
+              <FileText className="w-4 h-4" />
+              프롬프트 관리
+            </button>
+          </div>
         </header>
 
         <GeneratorControls 
@@ -294,6 +340,7 @@ function App() {
             <DashboardPreview 
               data={dashboardData} 
               onInsightsChange={handleInsightsChange}
+              onRegenerateInsights={handleRegenerateInsights}
             />
           </div>
         </div>

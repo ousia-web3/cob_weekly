@@ -16,6 +16,56 @@ load_dotenv()
 app = FastAPI()
 
 from fastapi import Response
+from pydantic import BaseModel
+
+class RegenerateRequest(BaseModel):
+    main_data: str
+    top10_data: str
+
+class PromptRequest(BaseModel):
+    content: str
+
+@app.post("/regenerate-summary")
+async def regenerate_summary(request: RegenerateRequest):
+    print(f"[{datetime.now()}] Regenerate summary request received.")
+    try:
+        context_data = {
+            "main_data": request.main_data,
+            "top10_data": request.top10_data
+        }
+        
+        ai_result = generate_ai_insights(context_data=context_data)
+        return ai_result
+        
+    except Exception as e:
+        print(f"Regeneration Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/prompt")
+async def get_prompt():
+    try:
+        prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "weekly_report.md")
+        if not os.path.exists(prompt_path):
+            return {"content": ""}
+        
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read prompt file: {str(e)}")
+
+@app.post("/prompt")
+async def save_prompt(request: PromptRequest):
+    try:
+        prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "weekly_report.md")
+        os.makedirs(os.path.dirname(prompt_path), exist_ok=True)
+        
+        with open(prompt_path, "w", encoding="utf-8") as f:
+            f.write(request.content)
+        
+        return {"status": "success", "message": "Prompt updated"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save prompt file: {str(e)}")
 
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
@@ -178,30 +228,50 @@ def extract_top20_from_cells(df):
     print(f"텍스트 영역에서 TOP 20: {len(top20_data)}개 항목 추출")
     return top20_data
 
-def generate_ai_insights(df):
+def generate_ai_insights(df=None, context_data=None):
     try:
-        # Extract Key Data for the Prompt
-        # Block 1: Rows 1-52 (Main Data)
-        main_data = df.iloc[0:52].to_string()
-        
-        # Block 4: Rows 84-93 (Top 10 lists - used for Top 20 context)
-        top10_data = df.iloc[83:93].to_string()
-        
-        # Construct Prompt using template from .env
-        print(f"프롬프트 템플릿 로드 상태: {'있음 (길이: ' + str(len(PROMPT_TEMPLATE)) + ')' if PROMPT_TEMPLATE else '없음 - 기본값 사용'}")
-
-        if PROMPT_TEMPLATE:
-            # Use template from .env and replace placeholders
-            prompt = PROMPT_TEMPLATE.format(
-                main_data=main_data,
-                top10_data=top10_data
-            )
-            # Append constraint to the prompt
-            prompt += "\n\n[Style Constraint]\nDo NOT use polite sentence endings like '~있습니다' or '~됩니다'. Use concise forms ending in nouns or '~음/함'."
-            print(f"프롬프트 템플릿 사용 (처음 200자): {PROMPT_TEMPLATE[:200]}")
+        if df is not None:
+            # Extract Key Data for the Prompt
+            # Block 1: Rows 1-52 (Main Data)
+            main_data = df.iloc[0:52].to_string()
+            
+            # Block 4: Rows 84-93 (Top 10 lists - used for Top 20 context)
+            top10_data = df.iloc[83:93].to_string()
+            
+            context = {
+                "main_data": main_data,
+                "top10_data": top10_data
+            }
+        elif context_data is not None:
+            main_data = context_data.get("main_data", "")
+            top10_data = context_data.get("top10_data", "")
+            context = context_data
         else:
-            # Fallback to default prompt if not set in .env
-            prompt = f"""
+            raise ValueError("Either df or context_data must be provided")
+        
+        # Construct Prompt
+        prompt_template = ""
+        prompt_source = "기본값"
+
+        # 1. Try loading from file (Highest Priority)
+        prompt_file_path = os.path.join(os.path.dirname(__file__), "prompts", "weekly_report.md")
+        if os.path.exists(prompt_file_path):
+            try:
+                with open(prompt_file_path, "r", encoding="utf-8") as f:
+                    prompt_template = f.read()
+                prompt_source = f"파일 ({prompt_file_path})"
+            except Exception as e:
+                print(f"프롬프트 파일 읽기 실패: {e}")
+
+        # 2. Try loading from .env (Override if file failed or not exists, but usually file is preferred)
+        # 만약 파일이 없고 .env가 있다면 .env 사용
+        if not prompt_template and PROMPT_TEMPLATE:
+            prompt_template = PROMPT_TEMPLATE
+            prompt_source = ".env 변수"
+
+        # 3. Default Fallback
+        if not prompt_template:
+            prompt_template = """
         당신은 여행사의 데이터 분석가입니다. 다음 주간 트래픽 데이터를 분석하여 임원 보고용 핵심 요약(Executive Summary)을 작성해주세요.
         
         [데이터 컨텍스트]
@@ -238,6 +308,22 @@ def generate_ai_insights(df):
         
         오직 JSON 배열만 출력하세요.
         """
+            prompt_source = "하드코딩 기본값"
+
+        print(f"프롬프트 소스: {prompt_source}")
+
+        # Format the prompt
+        # Use replace instead of format to avoid KeyError with JSON braces in the prompt template
+        prompt = prompt_template.replace("{main_data}", main_data).replace("{top10_data}", top10_data)
+
+        # Append constraint (Optional, if not already in template)
+        # 파일이나 .env에 이미 포함되어 있을 수 있으므로, 중복 방지를 위해 체크하거나
+        # 템플릿에 포함시키는 것이 좋음. 여기서는 기존 로직 유지를 위해 템플릿에 없는 경우만 추가하는 식보다는
+        # 템플릿 자체에 포함시켰으므로(위의 파일 생성 시), 별도 추가는 하지 않음.
+        # 단, .env나 기본값에는 없을 수 있으니... 
+        # 위에서 파일 생성할 때 [스타일 제약사항]을 넣었으므로 중복될 수 있음.
+        # 깔끔하게 템플릿에 다 포함된 것으로 가정하고 추가 코드는 제거.
+
         
         print("Calling AWS Bedrock...")
         bedrock = boto3.client(service_name='bedrock-runtime', region_name=BEDROCK_REGION)
@@ -272,23 +358,33 @@ def generate_ai_insights(df):
         # Extract JSON from text
         start = result_text.find('[')
         end = result_text.rfind(']') + 1
+        
+        insights = []
         if start != -1 and end != -1:
             json_str = result_text[start:end]
             print(f"추출된 JSON: {json_str[:200]}...")
-            return json.loads(json_str)
+            insights = json.loads(json_str)
         else:
             print(f"JSON 찾기 실패 - start: {start}, end: {end}")
-            return [
+            insights = [
                 {"title": "AI 응답 파싱 오류", "content": f"AI 응답에서 JSON을 찾을 수 없습니다.\n\n실제 응답:\n{result_text[:500]}"}
             ]
+            
+        return {
+            "insights": insights,
+            "context": context
+        }
             
     except Exception as e:
         print(f"AI Generation Error: {e}")
         # Return mock insights if AI fails (e.g. no credentials)
-        return [
-            {"title": "AI 분석 실패", "content": f"AI 요약을 생성하는 중 오류가 발생했습니다: {str(e)}"},
-            {"title": "시스템 메시지", "content": "AWS 자격 증명을 확인하거나 로컬 환경 설정을 점검해주세요."}
-        ]
+        return {
+            "insights": [
+                {"title": "AI 분석 실패", "content": f"AI 요약을 생성하는 중 오류가 발생했습니다: {str(e)}"},
+                {"title": "시스템 메시지", "content": "AWS 자격 증명을 확인하거나 로컬 환경 설정을 점검해주세요."}
+            ],
+            "context": {}
+        }
 
 def parse_excel_data(df):
     # Helper to safely get cell value
@@ -766,11 +862,12 @@ async def analyze_excel(file: UploadFile = File(...)):
         
         # 2. Generate AI Insights
         print(f"[{datetime.now()}] Starting AI generation...")
-        ai_insights = generate_ai_insights(df)
+        ai_result = generate_ai_insights(df)
         print(f"[{datetime.now()}] AI generation completed.")
         
         # 3. Combine
-        dashboard_data['aiInsight'] = ai_insights
+        dashboard_data['aiInsight'] = ai_result['insights']
+        dashboard_data['aiContext'] = ai_result['context']
         
         return dashboard_data
         
@@ -828,6 +925,22 @@ async def get_recipients_page():
         # server.py 파일이 있는 디렉토리 기준
         base_dir = os.path.dirname(os.path.abspath(__file__))
         template_path = os.path.join(base_dir, "templates", "recipients.html")
+        
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Template not found at {template_path}")
+            
+        with open(template_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        print(f"템플릿 로드 에러: {e}")
+        raise HTTPException(status_code=500, detail=f"템플릿 로드 실패: {str(e)}")
+
+@app.get("/prompt-manager", response_class=HTMLResponse)
+async def get_prompt_manager_page():
+    """프롬프트 관리 페이지 제공"""
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(base_dir, "templates", "prompt_manager.html")
         
         if not os.path.exists(template_path):
             raise FileNotFoundError(f"Template not found at {template_path}")

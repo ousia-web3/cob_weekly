@@ -145,21 +145,28 @@ class EmailService:
             success_count = 0
             fail_count = 0
 
-            # 개별 발송 (또는 숨은참조 사용 가능, 여기서는 개별 발송 처리)
-            for recipient in recipients:
-                try:
-                    msg = MIMEMultipart()
-                    msg['From'] = self.sender_email
-                    msg['To'] = recipient
-                    msg['Subject'] = subject
-                    
-                    msg.attach(MIMEText(html_content, 'html'))
-                    
-                    server.send_message(msg)
-                    success_count += 1
-                except Exception as e:
-                    logger.error(f"이메일 발송 실패 ({recipient}): {e}")
-                    fail_count += 1
+            # 수신자 전체를 To 헤더에 포함하여 한 번에 발송
+            # 이렇게 하면 모든 수신자가 다른 수신자 목록을 볼 수 있습니다.
+            recipients_str = ', '.join(recipients)
+            
+            msg = MIMEMultipart()
+            msg['From'] = self.sender_email
+            msg['To'] = recipients_str
+            msg['Subject'] = subject
+            
+            msg.attach(MIMEText(html_content, 'html'))
+            
+            # send_message는 실패한 수신자 딕셔너리를 반환합니다 (모두 성공하면 빈 딕셔너리)
+            refused = server.send_message(msg)
+            
+            if refused:
+                fail_count = len(refused)
+                success_count = len(recipients) - fail_count
+                for email, error in refused.items():
+                    logger.error(f"이메일 발송 실패 ({email}): {error}")
+            else:
+                success_count = len(recipients)
+                fail_count = 0
 
             server.quit()
             

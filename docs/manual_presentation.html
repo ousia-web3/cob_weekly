@@ -280,10 +280,7 @@ npm install</code></pre>
                 <p><code>start.bat</code> 파일 실행 시 서버와 브라우저가 자동 시작됩니다.</p>
                 <div class="highlight-box">
                     <strong>관리자 접속 주소</strong><br>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-                        <code id="addr-admin" style="font-size: 1.2rem;">http://localhost:5173</code>
-                        <button class="btn" style="padding: 0.2rem 0.8rem; font-size: 0.9rem;" onclick="copyToClipboard('addr-admin')">복사</button>
-                    </div>
+                    <code style="font-size: 1.2rem; display: block; margin-top: 0.5rem;">http://localhost:5173</code>
                 </div>
             </div>
             <div>
@@ -291,10 +288,7 @@ npm install</code></pre>
                 <p>사내망의 다른 PC나 모바일에서 접속 가능합니다.</p>
                 <div class="highlight-box" style="background: #f0fdf4; border-color: #bbf7d0;">
                     <strong>사내망 접속 주소</strong><br>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-                        <code id="addr-internal" style="font-size: 1.2rem; color: #15803d;">http://192.168.82.105:5173</code>
-                        <button class="btn" style="padding: 0.2rem 0.8rem; font-size: 0.9rem; background-color: #15803d;" onclick="copyToClipboard('addr-internal')">복사</button>
-                    </div>
+                    <code style="font-size: 1.2rem; display: block; margin-top: 0.5rem; color: #15803d;">http://192.168.82.105:5173</code>
                     <span style="font-size: 0.9rem; color: #666; display: block; margin-top: 0.5rem;">※ 관리자 PC 방화벽(8001, 5173) 허용 필요</span>
                 </div>
             </div>
@@ -486,15 +480,6 @@ npm install</code></pre>
     });
 
     showSlide(1);
-
-    function copyToClipboard(elementId) {
-        const text = document.getElementById(elementId).innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            alert('주소가 복사되었습니다: ' + text);
-        }).catch(err => {
-            console.error('복사 실패:', err);
-        });
-    }
 </script>
 
 </body>
