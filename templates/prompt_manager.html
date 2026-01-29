@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프롬프트 관리 - 코브랜드 주간 보고서</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">프롬프트 관리</h1>
+                <p class="text-slate-500 mt-2">AI 요약 생성에 사용되는 프롬프트를 수정하고 관리합니다.</p>
+            </div>
+            <button onclick="window.close()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition-colors shadow-sm">
+                닫기
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-200px)]">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span class="font-medium text-slate-700">weekly_report.md</span>
+                </div>
+                <div id="status-message" class="text-sm font-medium hidden"></div>
+            </div>
+            
+            <div class="flex-1 relative">
+                <textarea id="prompt-editor" class="w-full h-full p-6 font-mono text-sm leading-relaxed resize-none focus:outline-none text-slate-800" spellcheck="false" placeholder="프롬프트 내용을 불러오는 중..."></textarea>
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button onclick="loadPrompt()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition-colors shadow-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    새로고침
+                </button>
+                <button onclick="savePrompt()" id="save-btn" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors shadow-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                    </svg>
+                    저장하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.location.origin;
+        const editor = document.getElementById('prompt-editor');
+        const statusMsg = document.getElementById('status-message');
+        const saveBtn = document.getElementById('save-btn');
+
+        // Show status message
+        function showStatus(type, message) {
+            statusMsg.textContent = message;
+            statusMsg.className = `text-sm font-medium ${type === 'success' ? 'text-green-600' : 'text-red-600'}`;
+            statusMsg.classList.remove('hidden');
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusMsg.classList.add('hidden');
+                }, 3000);
+            }
+        }
+
+        // Load prompt
+        async function loadPrompt() {
+            try {
+                editor.disabled = true;
+                const response = await fetch(`${API_BASE_URL}/prompt`);
+                if (!response.ok) throw new Error('Failed to load');
+                
+                const data = await response.json();
+                editor.value = data.content;
+                editor.disabled = false;
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('error', '프롬프트를 불러오는데 실패했습니다.');
+                editor.disabled = false;
+            }
+        }
+
+        // Save prompt
+        async function savePrompt() {
+            const content = editor.value;
+            if (!content.trim()) {
+                showStatus('error', '내용을 입력해주세요.');
+                return;
+            }
+
+            try {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    저장 중...
+                `;
+
+                const response = await fetch(`${API_BASE_URL}/prompt`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content }),
+                });
+
+                if (!response.ok) throw new Error('Failed to save');
+
+                showStatus('success', '성공적으로 저장되었습니다.');
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('error', '저장에 실패했습니다.');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                    </svg>
+                    저장하기
+                `;
+            }
+        }
+
+        // Initial load
+        loadPrompt();
+
+        // Enable tab indentation in textarea
+        editor.addEventListener('keydown', function(e) {
+            if (e.key == 'Tab') {
+                e.preventDefault();
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+
+                // set textarea value to: text before caret + tab + text after caret
+                this.value = this.value.substring(0, start) +
+                    "\t" + this.value.substring(end);
+
+                // put caret at right position again
+                this.selectionStart = this.selectionEnd = start + 1;
+            }
+        });
+    </script>
+</body>
+</html>

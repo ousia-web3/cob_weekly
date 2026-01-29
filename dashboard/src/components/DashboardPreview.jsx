@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Edit2, Save, X } from "lucide-react";
+import { Edit2, Save, X, RefreshCw } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -96,7 +96,7 @@ const Top10Table = ({ title, dataInfo, headerColor = "indigo" }) => {
 
 
 
-const DashboardPreview = ({ data, onInsightsChange }) => {
+const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
   const [isDetailedTableVisible, setIsDetailedTableVisible] = useState(true);
   const [isEditingInsights, setIsEditingInsights] = useState(false);
   const [tempInsights, setTempInsights] = useState([]);
@@ -196,12 +196,21 @@ const DashboardPreview = ({ data, onInsightsChange }) => {
                 </button>
               </>
             ) : (
-              <button
-                onClick={handleEditInsights}
-                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs rounded hover:bg-slate-50 transition-colors"
-              >
-                <Edit2 className="w-3 h-3" /> 수정
-              </button>
+              <>
+                <button
+                  onClick={onRegenerateInsights}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs rounded hover:bg-slate-50 transition-colors mr-2"
+                  title="AI 요약 다시 생성하기"
+                >
+                  <RefreshCw className="w-3 h-3" /> 핵심요약 재생성
+                </button>
+                <button
+                  onClick={handleEditInsights}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs rounded hover:bg-slate-50 transition-colors"
+                >
+                  <Edit2 className="w-3 h-3" /> 수정
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -387,6 +396,7 @@ const DashboardPreview = ({ data, onInsightsChange }) => {
                   tick={{ fill: "#94a3b8", fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
+                  dy={10}
                 />
                 <Tooltip
                   contentStyle={{
