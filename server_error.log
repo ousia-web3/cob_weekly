@@ -1,0 +1,126 @@
+[2025-12-23 15:53:58.656916] Error: index 132 is out of bounds for axis 0 with size 130
+Traceback (most recent call last):
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 790, in analyze_excel
+    dashboard_data = parse_excel_data(df)
+                     ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 436, in parse_excel_data
+    combined_top20 = extract_top20_from_cells(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 145, in extract_top20_from_cells
+    growth_val = df.iloc[growth_row, col_idx]
+                 ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\indexing.py", line 1184, in __getitem__
+    return self.obj._get_value(*key, takeable=self._takeable)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\frame.py", line 4223, in _get_value
+    return series._values[index]
+           ~~~~~~~~~~~~~~^^^^^^^
+IndexError: index 132 is out of bounds for axis 0 with size 130
+
+[2025-12-23 15:55:06.892120] Error: index 132 is out of bounds for axis 0 with size 130
+Traceback (most recent call last):
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 790, in analyze_excel
+    dashboard_data = parse_excel_data(df)
+                     ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 436, in parse_excel_data
+    combined_top20 = extract_top20_from_cells(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 145, in extract_top20_from_cells
+    growth_val = df.iloc[growth_row, col_idx]
+                 ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\indexing.py", line 1184, in __getitem__
+    return self.obj._get_value(*key, takeable=self._takeable)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\frame.py", line 4223, in _get_value
+    return series._values[index]
+           ~~~~~~~~~~~~~~^^^^^^^
+IndexError: index 132 is out of bounds for axis 0 with size 130
+
+[2025-12-23 15:59:30.287733] Error: index 132 is out of bounds for axis 0 with size 130
+Traceback (most recent call last):
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 790, in analyze_excel
+    dashboard_data = parse_excel_data(df)
+                     ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 436, in parse_excel_data
+    combined_top20 = extract_top20_from_cells(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 145, in extract_top20_from_cells
+    growth_val = df.iloc[growth_row, col_idx]
+                 ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\indexing.py", line 1184, in __getitem__
+    return self.obj._get_value(*key, takeable=self._takeable)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\frame.py", line 4223, in _get_value
+    return series._values[index]
+           ~~~~~~~~~~~~~~^^^^^^^
+IndexError: index 132 is out of bounds for axis 0 with size 130
+
+[2025-12-23 15:59:59.418326] Error: index 127 is out of bounds for axis 0 with size 124
+Traceback (most recent call last):
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 790, in analyze_excel
+    dashboard_data = parse_excel_data(df)
+                     ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 436, in parse_excel_data
+    combined_top20 = extract_top20_from_cells(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 122, in extract_top20_from_cells
+    name = df.iloc[name_row, col_idx]
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\indexing.py", line 1184, in __getitem__
+    return self.obj._get_value(*key, takeable=self._takeable)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\frame.py", line 4223, in _get_value
+    return series._values[index]
+           ~~~~~~~~~~~~~~^^^^^^^
+IndexError: index 127 is out of bounds for axis 0 with size 124
+
+[2025-12-23 16:01:25.855019] Error: index 132 is out of bounds for axis 0 with size 130
+Traceback (most recent call last):
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 790, in analyze_excel
+    dashboard_data = parse_excel_data(df)
+                     ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 436, in parse_excel_data
+    combined_top20 = extract_top20_from_cells(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 145, in extract_top20_from_cells
+    growth_val = df.iloc[growth_row, col_idx]
+                 ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\indexing.py", line 1184, in __getitem__
+    return self.obj._get_value(*key, takeable=self._takeable)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\frame.py", line 4223, in _get_value
+    return series._values[index]
+           ~~~~~~~~~~~~~~^^^^^^^
+IndexError: index 132 is out of bounds for axis 0 with size 130
+
+[2025-12-23 17:16:36.622023] Error: Excel file format cannot be determined, you must specify an engine manually.
+Traceback (most recent call last):
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 787, in analyze_excel
+    df = pd.read_excel(io.BytesIO(contents), header=None)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\io\excel\_base.py", line 1554, in __init__
+    raise ValueError(
+ValueError: Excel file format cannot be determined, you must specify an engine manually.
+
+[2025-12-23 17:17:15.920698] Error: index 132 is out of bounds for axis 0 with size 130
+Traceback (most recent call last):
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 790, in analyze_excel
+    dashboard_data = parse_excel_data(df)
+                     ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 436, in parse_excel_data
+    combined_top20 = extract_top20_from_cells(df)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\server.py", line 145, in extract_top20_from_cells
+    growth_val = df.iloc[growth_row, col_idx]
+                 ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\indexing.py", line 1184, in __getitem__
+    return self.obj._get_value(*key, takeable=self._takeable)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HANA\Desktop\cob_weekly\venv\Lib\site-packages\pandas\core\frame.py", line 4223, in _get_value
+    return series._values[index]
+           ~~~~~~~~~~~~~~^^^^^^^
+IndexError: index 132 is out of bounds for axis 0 with size 130
+
