@@ -441,7 +441,36 @@ npm install</code></pre>
             <h3 style="margin-top: 0; color: #1d4ed8;">서버 연결 오류 시</h3>
             <p style="margin-bottom: 0;">start.bat을 통해 백엔드(8001)와 프론트엔드(5173)가 모두 정상 실행되었는지 확인하세요.</p>
         </div>
-        <div class="page-number">10 / 10</div>
+        <div class="page-number">10 / 11</div>
+    </div>
+
+    <!-- Slide 11: Update Logs -->
+    <div class="slide" id="slide-11">
+        <h2>10. 업데이트 기록 (26.02.03)</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h3 style="color: #4b5563;">🚀 시스템 개선</h3>
+                <ul>
+                    <li><strong>마스터 워크플로우</strong>: 실시간 터미널 모니터링 적용</li>
+                    <li><strong>이메일 스크립트</strong>: <code>send_weekly_report_email.py</code> 분리 생성</li>
+                    <li><strong>배치 파일</strong>: <code>start.bat</code> 최적화 및 원클릭 실행 <code>run_weekly_report.bat</code> 추가</li>
+                </ul>
+            </div>
+            <div>
+                <h3 style="color: #4b5563;">📱 UI/UX 최적화</h3>
+                <ul>
+                    <li><strong>Outlook App</strong>: Ghost Table 패딩 적용 (레이아웃 틀어짐 해결)</li>
+                    <li><strong>Outlook Web (Mobile)</strong>: <span style="color: #2563eb; font-weight: bold;">Flexbox 레이아웃</span> 전면 도입
+                        <ul style="font-size: 0.9em; color: #666; margin-top: 0.5rem;">
+                            <li>PC: 가로 배치 유지</li>
+                            <li>Mobile: 화면 너비에 맞춰 100% 꽉 찬 카드 배열 (Stacking)</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="page-number">11 / 11</div>
     </div>
 </div>
 
@@ -452,7 +481,7 @@ npm install</code></pre>
 
 <script>
     let currentSlide = 1;
-    const totalSlides = 10;
+    const totalSlides = 11;
 
     function showSlide(n) {
         if (n < 1) n = 1;

@@ -6,7 +6,7 @@ echo ========================================
 echo [1/2] 백엔드 서버 실행 (8001 포트)
 echo ========================================
 :: 필요한 라이브러리 자동 설치 후 실행
-start "Backend" cmd /k "call venv\Scripts\activate & pip install matplotlib pandas openpyxl & python server.py"
+start "Backend" cmd /k "call venv\Scripts\activate & pip install -r requirements.txt & python server.py"
 
 echo.
 echo ========================================

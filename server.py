@@ -13,6 +13,13 @@ import pytz
 # Load environment variables from .env file
 load_dotenv()
 
+# Import report generation logic
+try:
+    from generate_email_report import generate_html, create_trend_chart
+except ImportError:
+    print("Warning: Could not import generate_email_report. Make sure it exists in the same directory.")
+
+
 app = FastAPI()
 
 from fastapi import Response

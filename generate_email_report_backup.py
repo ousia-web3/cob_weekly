@@ -175,43 +175,28 @@ def generate_html(data, charts):
         <title>{title}</title>
         <!--[if mso]>
         <style type="text/css">
-        /* Client-specific Resets */
-        body, table, td, a {{ -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }}
-        table, td {{ mso-table-lspace: 0pt; mso-table-rspace: 0pt; }}
-        img {{ -ms-interpolation-mode: bicubic; }}
-
-        /* Outlook Font Fix */
         body, table, td {{font-family: 'Malgun Gothic', sans-serif !important;}}
         </style>
         <![endif]-->
         <style type="text/css">
-        /* Mobile Styles */
-        @media screen and (max-width: 600px) {{
-            .email-container {{ width: 100% !important; max-width: 100% !important; }}
-            .fluid {{ width: 100% !important; max-width: 100% !important; height: auto !important; margin-left: auto !important; margin-right: auto !important; }}
-            .stack-column {{ display: block !important; width: 100% !important; max-width: 100% !important; direction: ltr !important; }}
-            .stack-column-center {{ display: block !important; width: 100% !important; max-width: 100% !important; text-align: center !important; direction: ltr !important; }}
-            .kpi-column {{ display: inline-block !important; width: 48% !important; max-width: 48% !important; margin-bottom: 10px !important; vertical-align: top !important; }}
-            .mobile-hidden {{ display: none !important; mso-hide: all !important; }}
-            .mobile-padding {{ padding: 20px !important; }}
-            .mobile-center {{ text-align: center !important; }}
+        @media only screen and (max-width: 600px) {{
+            .container {{ width: 100% !important; max-width: 100% !important; }}
+            .padding-mobile {{ padding: 15px !important; }}
+            .mobile-hidden {{ display: none !important; }}
+            .col-2-mobile {{ width: 48% !important; display: inline-block !important; box-sizing: border-box !important; margin-bottom: 10px !important; margin-right: 1% !important; }}
+            .full-width {{ width: 100% !important; display: block !important; }}
+            .no-padding-right-mobile {{ padding-right: 0 !important; }}
+            .no-padding-left-mobile {{ padding-left: 0 !important; }}
         }}
         </style>
     </head>
     <body style="margin: 0; padding: 0; background-color: {BG_COLOR}; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; color: {TEXT_COLOR}; -webkit-font-smoothing: antialiased;">
         <center>
-            <!-- Outer Wrapper -->
-            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: {BG_COLOR};" role="presentation">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: {BG_COLOR};">
                 <tr>
                     <td align="center" valign="top">
-                        <!-- Hybrid Setup: Ghost Table for Main Container -->
-                        <!--[if mso]>
-                        <table border="0" cellspacing="0" cellpadding="0" width="850" align="center">
-                        <tr>
-                        <td align="center" valign="top">
-                        <![endif]-->
-                        <div style="max-width: 850px; margin: 0 auto;" class="email-container">
-                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: {CARD_BG}; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <!-- Main Container -->
+                        <table border="0" cellpadding="0" cellspacing="0" width="850" class="container" style="max-width: 850px; width: 100%; background-color: {CARD_BG}; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                             
                             <!-- Email Body (선택 사항) -->
                             {f'<tr><td style="padding: 10px 10px; background-color: #ffffff;">{generate_email_body_html(email_body)}</td></tr>' if email_body else ''}
@@ -233,227 +218,182 @@ def generate_html(data, charts):
 
                             <!-- Content Padding -->
                             <tr>
-                            <!-- Content Padding -->
-                            <tr>
-                                <td class="mobile-padding" style="padding: 40px;">
+                                <td class="padding-mobile" style="padding: 40px;">
 
                                     <!-- AI Insights (핵심 요약) -->
                                     {generate_ai_insights_html(ai_insights)}
 
-                                    <!-- KPIs (Hybrid Columns) -->
-                                    <div style="text-align: center; font-size: 0; display: flex; flex-wrap: wrap; justify-content: center;">
-                                        <!--[if mso]>
-                                        <table border="0" cellspacing="0" cellpadding="0" width="100%">
+                                    <!-- KPIs (4 Cards) -->
+                                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 20px;">
                                         <tr>
-                                        <td width="25%" valign="top" style="padding: 0 3px;">
-                                        <![endif]-->
-                                        
-                                        <!-- Total UV -->
-                                        <div class="kpi-column" style="display: inline-block; width: 100%; flex: 1 1 180px; min-width: 180px; vertical-align: top; text-align: left; margin: 0 0.5%; font-size: 13px; box-sizing: border-box;">
-                                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px;">
-                                                <tr>
-                                                    <td style="padding: 15px; height: 90px; vertical-align: top;">
-                                                        <div style="font-size: 10px; font-weight: bold; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Total UV</div>
-                                                        <div style="font-size: 24px; font-weight: bold; color: {TEXT_COLOR}; margin-bottom: 8px;">{total_uv:,}</div>
-                                                        <div style="font-size: 13px; font-weight: bold; color: {growth_color};">
-                                                            {growth:+.1f}% <span style="font-size: 10px; color: #999; font-weight: normal;">vs 전주</span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                        </div>
+                                            <!-- Total UV -->
+                                            <td width="25%" valign="top" class="col-2-mobile" style="padding: 0 5px 0 0;">
+                                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px;">
+                                                    <tr>
+                                                        <td style="padding: 15px; height: 90px; vertical-align: top;">
+                                                            <div style="font-size: 10px; font-weight: bold; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Total UV</div>
+                                                            <div style="font-size: 24px; font-weight: bold; color: {TEXT_COLOR}; margin-bottom: 8px;">{total_uv:,}</div>
+                                                            <div style="font-size: 13px; font-weight: bold; color: {growth_color};">
+                                                                {growth:+.1f}% <span style="font-size: 10px; color: #999; font-weight: normal;">vs 전주</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
 
-                                        <!--[if mso]>
-                                        </td>
-                                        <td width="25%" valign="top" style="padding: 0 3px;">
-                                        <![endif]-->
+                                            <!-- Mobile Share -->
+                                            <td width="25%" valign="top" class="col-2-mobile" style="padding: 0 5px;">
+                                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px;">
+                                                    <tr>
+                                                        <td style="padding: 15px; height: 90px; vertical-align: top;">
+                                                            <div style="font-size: 10px; font-weight: bold; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Mobile Share</div>
+                                                            <div style="font-size: 24px; font-weight: bold; color: {TEXT_COLOR}; margin-bottom: 8px;">{mobile_share}%</div>
+                                                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f6f9; height: 6px; border-radius: 3px;">
+                                                                <tr>
+                                                                    <td width="{mobile_share}%" style="background-color: #f97316; height: 6px; border-radius: 3px;"></td>
+                                                                    <td width="{100-mobile_share}%"></td>
+                                                                </tr>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
 
-                                        <!-- Mobile Share -->
-                                        <div class="kpi-column" style="display: inline-block; width: 100%; flex: 1 1 180px; min-width: 180px; vertical-align: top; text-align: left; margin: 0 0.5%; font-size: 13px; box-sizing: border-box;">
-                                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px;">
-                                                <tr>
-                                                    <td style="padding: 15px; height: 90px; vertical-align: top;">
-                                                        <div style="font-size: 10px; font-weight: bold; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Mobile Share</div>
-                                                        <div style="font-size: 24px; font-weight: bold; color: {TEXT_COLOR}; margin-bottom: 8px;">{mobile_share}%</div>
-                                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f6f9; height: 6px; border-radius: 3px;">
-                                                            <tr>
-                                                                <td width="{mobile_share}%" style="background-color: #f97316; height: 6px; border-radius: 3px;"></td>
-                                                                <td width="{100-mobile_share}%"></td>
-                                                            </tr>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                        </div>
+                                            <!-- Best Growth -->
+                                            <td width="25%" valign="top" class="col-2-mobile" style="padding: 0 5px;">
+                                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-left: 4px solid #ef4444; border-radius: 8px;">
+                                                    <tr>
+                                                        <td style="padding: 15px; height: 90px; vertical-align: top;">
+                                                            <div style="font-size: 10px; font-weight: bold; color: #ef4444; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Best Growth</div>
+                                                            <div style="font-size: 13px; font-weight: bold; color: {TEXT_COLOR}; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{best_growth.get('name', '-')}</div>
+                                                            <div style="font-size: 18px; font-weight: bold; color: #ef4444;">
+                                                                {best_growth.get('rate', 0):+.1f}% <span style="font-size: 10px; color: #999; font-weight: normal;">증가</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
 
-                                        <!--[if mso]>
-                                        </td>
-                                        <td width="25%" valign="top" style="padding: 0 3px;">
-                                        <![endif]-->
-
-                                        <!-- Best Growth -->
-                                        <div class="kpi-column" style="display: inline-block; width: 100%; flex: 1 1 180px; min-width: 180px; vertical-align: top; text-align: left; margin: 0 0.5%; font-size: 13px; box-sizing: border-box;">
-                                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-left: 4px solid #ef4444; border-radius: 8px;">
-                                                <tr>
-                                                    <td style="padding: 15px; height: 90px; vertical-align: top;">
-                                                        <div style="font-size: 10px; font-weight: bold; color: #ef4444; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Best Growth</div>
-                                                        <div style="font-size: 13px; font-weight: bold; color: {TEXT_COLOR}; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{best_growth.get('name', '-')}</div>
-                                                        <div style="font-size: 18px; font-weight: bold; color: #ef4444;">
-                                                            {best_growth.get('rate', 0):+.1f}% <span style="font-size: 10px; color: #999; font-weight: normal;">증가</span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                        </div>
-
-                                        <!--[if mso]>
-                                        </td>
-                                        <td width="25%" valign="top" style="padding: 0 3px;">
-                                        <![endif]-->
-
-                                        <!-- Worst Drop -->
-                                        <div class="kpi-column" style="display: inline-block; width: 100%; flex: 1 1 180px; min-width: 180px; vertical-align: top; text-align: left; margin: 0 0.5%; font-size: 13px; box-sizing: border-box;">
-                                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-left: 4px solid #3b82f6; border-radius: 8px;">
-                                                <tr>
-                                                    <td style="padding: 15px; height: 90px; vertical-align: top;">
-                                                        <div style="font-size: 10px; font-weight: bold; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Worst Drop</div>
-                                                        <div style="font-size: 13px; font-weight: bold; color: {TEXT_COLOR}; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{worst_drop.get('name', '-')}</div>
-                                                        <div style="font-size: 18px; font-weight: bold; color: #3b82f6;">
-                                                            {worst_drop.get('rate', 0):.1f}% <span style="font-size: 10px; color: #999; font-weight: normal;">감소</span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                        </div>
-
-                                        <!--[if mso]>
-                                        </td>
+                                            <!-- Worst Drop -->
+                                            <td width="25%" valign="top" class="col-2-mobile no-padding-left-mobile" style="padding: 0 0 0 5px;">
+                                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-left: 4px solid #3b82f6; border-radius: 8px;">
+                                                    <tr>
+                                                        <td style="padding: 15px; height: 90px; vertical-align: top;">
+                                                            <div style="font-size: 10px; font-weight: bold; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Worst Drop</div>
+                                                            <div style="font-size: 13px; font-weight: bold; color: {TEXT_COLOR}; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{worst_drop.get('name', '-')}</div>
+                                                            <div style="font-size: 18px; font-weight: bold; color: #3b82f6;">
+                                                                {worst_drop.get('rate', 0):.1f}% <span style="font-size: 10px; color: #999; font-weight: normal;">감소</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
                                         </tr>
-                                        </table>
-                                        <![endif]-->
-                                    </div>
-                                    <div style="height: 20px; font-size: 20px; line-height: 20px;">&nbsp;</div>
+                                    </table>
 
                                     <!-- Chart Section -->
-                                    <div style="margin-bottom: 20px;">
-                                    <!-- Chart Section (Responsive Image) -->
                                     <div style="margin-bottom: 20px;">
                                         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px; margin-bottom: 20px;">
                                             <tr>
                                                 <td style="padding: 25px;">
                                                     <h3 style="font-size: 16px; font-weight: bold; color: {TEXT_COLOR}; margin: 0 0 20px 0;">주간 트래픽 추이</h3>
-                                                    <img src="data:image/png;base64,{charts.get('trend', '')}" width="100%" style="width: 100%; max-width: 100%; height: auto; display: block; margin: 0 auto;" alt="Weekly Trend Chart" class="fluid">
+                                                    <img src="data:image/png;base64,{charts.get('trend', '')}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" alt="Weekly Trend Chart">
                                                 </td>
                                             </tr>
                                         </table>
 
-                                        <!-- Two Column Hybrid (Device & Channel) -->
-                                        <div style="text-align: center; font-size: 0; display: flex; flex-wrap: wrap; justify-content: center;">
-                                            <!--[if mso]>
-                                            <table border="0" cellspacing="0" cellpadding="0" width="100%">
+                                        <!-- Device & Channel Type Cards -->
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
                                             <tr>
-                                            <td width="48%" valign="top" style="padding-right: 10px;">
-                                            <![endif]-->
+                                                <!-- Device Distribution -->
+                                                <td width="50%" valign="top" class="full-width no-padding-right-mobile" style="padding: 0 10px 0 0;">
+                                                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px;">
+                                                        <tr>
+                                                            <td style="padding: 25px;">
+                                                                <h3 style="font-size: 14px; font-weight: bold; color: {TEXT_COLOR}; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 0.5px;">디바이스 점유율</h3>
 
-                                            <!-- Device Distribution -->
-                                            <div class="stack-column" style="display: inline-block; width: 100%; flex: 1 1 280px; min-width: 280px; vertical-align: top; text-align: left; margin-bottom: 20px; font-size: 13px; margin-right: 1.5%; box-sizing: border-box;">
-                                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px; height: 100%;">
-                                                    <tr>
-                                                        <td style="padding: 25px;">
-                                                            <h3 style="font-size: 14px; font-weight: bold; color: {TEXT_COLOR}; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 0.5px;">디바이스 점유율</h3>
+                                                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 20px;">
+                                                                    <tr>
+                                                                        <td style="padding-bottom: 10px;">
+                                                                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                                                <tr>
+                                                                                    <td valign="middle">
+                                                                                        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background-color: #f97316; vertical-align: middle;"></span>
+                                                                                        <span style="font-size: 13px; font-weight: 600; color: {TEXT_COLOR}; vertical-align: middle; margin-left: 8px;">Mobile</span>
+                                                                                    </td>
+                                                                                    <td align="right">
+                                                                                        <span style="font-size: 18px; font-weight: bold; color: {TEXT_COLOR};">{mobile_pct}%</span>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td>
+                                                                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; height: 24px; border-radius: 6px;">
+                                                                                <tr>
+                                                                                    <td width="{mobile_pct}%" style="background-color: #f97316; border-radius: 6px; text-align: center; color: white; font-size: 11px; font-weight: bold;">{mobile_pct}%</td>
+                                                                                    <td width="{100-mobile_pct}%"></td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
 
-                                                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 20px;">
-                                                                <tr>
-                                                                    <td style="padding-bottom: 10px;">
-                                                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                                                                            <tr>
-                                                                                <td valign="middle">
-                                                                                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background-color: #f97316; vertical-align: middle;"></span>
-                                                                                    <span style="font-size: 13px; font-weight: 600; color: {TEXT_COLOR}; vertical-align: middle; margin-left: 8px;">Mobile</span>
-                                                                                </td>
-                                                                                <td align="right">
-                                                                                    <span style="font-size: 18px; font-weight: bold; color: {TEXT_COLOR};">{mobile_pct}%</span>
-                                                                                </td>
-                                                                            </tr>
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; height: 24px; border-radius: 6px;">
-                                                                            <tr>
-                                                                                <td width="{mobile_pct}%" style="background-color: #f97316; border-radius: 6px; text-align: center; color: white; font-size: 11px; font-weight: bold;">{mobile_pct}%</td>
-                                                                                <td width="{100-mobile_pct}%"></td>
-                                                                            </tr>
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                            </table>
+                                                                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                                    <tr>
+                                                                        <td style="padding-bottom: 10px;">
+                                                                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                                                <tr>
+                                                                                    <td valign="middle">
+                                                                                        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background-color: #334155; vertical-align: middle;"></span>
+                                                                                        <span style="font-size: 13px; font-weight: 600; color: {TEXT_COLOR}; vertical-align: middle; margin-left: 8px;">PC</span>
+                                                                                    </td>
+                                                                                    <td align="right">
+                                                                                        <span style="font-size: 18px; font-weight: bold; color: {TEXT_COLOR};">{pc_pct}%</span>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td>
+                                                                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; height: 24px; border-radius: 6px;">
+                                                                                <tr>
+                                                                                    <td width="{pc_pct}%" style="background-color: #334155; border-radius: 6px; text-align: center; color: white; font-size: 11px; font-weight: bold;">{pc_pct}%</td>
+                                                                                    <td width="{100-pc_pct}%"></td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
 
-                                                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                                                                <tr>
-                                                                    <td style="padding-bottom: 10px;">
-                                                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                                                                            <tr>
-                                                                                <td valign="middle">
-                                                                                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background-color: #334155; vertical-align: middle;"></span>
-                                                                                    <span style="font-size: 13px; font-weight: 600; color: {TEXT_COLOR}; vertical-align: middle; margin-left: 8px;">PC</span>
-                                                                                </td>
-                                                                                <td align="right">
-                                                                                    <span style="font-size: 18px; font-weight: bold; color: {TEXT_COLOR};">{pc_pct}%</span>
-                                                                                </td>
-                                                                            </tr>
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; height: 24px; border-radius: 6px;">
-                                                                            <tr>
-                                                                                <td width="{pc_pct}%" style="background-color: #334155; border-radius: 6px; text-align: center; color: white; font-size: 11px; font-weight: bold;">{pc_pct}%</td>
-                                                                                <td width="{100-pc_pct}%"></td>
-                                                                            </tr>
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                            </table>
+                                                                <div style="margin-top: 20px; text-align: center; font-size: 11px; color: #999;">
+                                                                    모바일 중심 유입 지속
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
 
-                                                            <div style="margin-top: 20px; text-align: center; font-size: 11px; color: #999;">
-                                                                모바일 중심 유입 지속
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                            </div>
+                                                <!-- Channel Type Distribution -->
+                                                <td width="50%" valign="top" class="full-width no-padding-left-mobile" style="padding: 0 0 0 10px;">
+                                                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px;">
+                                                        <tr>
+                                                            <td style="padding: 25px;">
+                                                                <h3 style="font-size: 14px; font-weight: bold; color: {TEXT_COLOR}; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 0.5px;">채널 유형 점유율 (TOP 20)</h3>
 
-                                            <!--[if mso]>
-                                            </td>
-                                            <td width="48%" valign="top" style="padding-left: 10px;">
-                                            <![endif]-->
+                                                                {generate_channel_type_bars(sorted_channel_types)}
 
-                                            <!-- Channel Type Distribution -->
-                                            <div class="stack-column" style="display: inline-block; width: 100%; flex: 1 1 280px; min-width: 280px; vertical-align: top; text-align: left; margin-bottom: 20px; font-size: 13px; margin-left: 1.5%; box-sizing: border-box;">
-                                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid {BORDER_COLOR}; border-radius: 8px; height: 100%;">
-                                                    <tr>
-                                                        <td style="padding: 25px;">
-                                                            <h3 style="font-size: 14px; font-weight: bold; color: {TEXT_COLOR}; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 0.5px;">채널 유형 점유율 (TOP 20)</h3>
-
-                                                            {generate_channel_type_bars(sorted_channel_types)}
-
-                                                            <div style="margin-top: 20px; text-align: center; font-size: 11px; color: #999;">
-                                                                기준: 코브랜드 TOP 20
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                            </div>
-
-                                            <!--[if mso]>
-                                            </td>
+                                                                <div style="margin-top: 20px; text-align: center; font-size: 11px; color: #999;">
+                                                                    기준: 코브랜드 TOP 20
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
                                             </tr>
-                                            </table>
-                                            <![endif]-->
-                                        </div>
+                                        </table>
                                     </div>
 
                                     <!-- Co-Brand TOP 20 Table -->
@@ -475,45 +415,30 @@ def generate_html(data, charts):
                                     <div style="margin-bottom: 20px;">
                                         <h3 style="font-size: 15px; color: {PRIMARY_COLOR}; margin-bottom: 15px; font-weight: bold;">채널별 상세 순위 (Top 10)</h3>
 
-                                        <!-- Top 10 Tables Hybrid -->
-                                        <div style="text-align: center; font-size: 0; display: flex; flex-wrap: wrap; justify-content: center;">
-                                            <!--[if mso]>
-                                            <table border="0" cellspacing="0" cellpadding="0" width="100%">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed;">
                                             <tr>
-                                            <td width="32%" valign="top" style="padding: 0 3px;">
-                                            <![endif]-->
+                                                <!-- Brand Mall -->
+                                                <td width="32%" valign="top" class="full-width">
+                                                    {create_detailed_top10_card(brand_mall_data, '브랜드몰 TOP 10', '#6366f1')}
+                                                </td>
 
-                                            <!-- Brand Mall -->
-                                            <div class="stack-column" style="display: inline-block; width: 100%; flex: 1 1 240px; min-width: 240px; vertical-align: top; margin: 0 1%; box-sizing: border-box;">
-                                                {create_detailed_top10_card(brand_mall_data, '브랜드몰 TOP 10', '#6366f1')}
-                                            </div>
+                                                <!-- Spacer -->
+                                                <td width="2%"></td>
 
-                                            <!--[if mso]>
-                                            </td>
-                                            <td width="32%" valign="top" style="padding: 0 3px;">
-                                            <![endif]-->
+                                                <!-- Affiliate -->
+                                                <td width="32%" valign="top" class="full-width">
+                                                    {create_detailed_top10_card(affiliate_data, '제휴사 TOP 10', '#10b981')}
+                                                </td>
 
-                                            <!-- Affiliate -->
-                                            <div class="stack-column" style="display: inline-block; width: 100%; flex: 1 1 240px; min-width: 240px; vertical-align: top; margin: 0 1%; box-sizing: border-box;">
-                                                {create_detailed_top10_card(affiliate_data, '제휴사 TOP 10', '#10b981')}
-                                            </div>
+                                                <!-- Spacer -->
+                                                <td width="2%"></td>
 
-                                            <!--[if mso]>
-                                            </td>
-                                            <td width="32%" valign="top" style="padding: 0 3px;">
-                                            <![endif]-->
-
-                                            <!-- Official Center -->
-                                            <div class="stack-column" style="display: inline-block; width: 100%; flex: 1 1 240px; min-width: 240px; vertical-align: top; margin: 0 1%; box-sizing: border-box;">
-                                                {create_detailed_top10_card(official_data, '공식인증예약센터 TOP 10', '#f97316')}
-                                            </div>
-
-                                            <!--[if mso]>
-                                            </td>
+                                                <!-- Official Center -->
+                                                <td width="32%" valign="top" class="full-width">
+                                                    {create_detailed_top10_card(official_data, '공식인증예약센터 TOP 10', '#f97316')}
+                                                </td>
                                             </tr>
-                                            </table>
-                                            <![endif]-->
-                                        </div>
+                                        </table>
                                     </div>
 
                                     <!-- Categories Section -->
@@ -531,12 +456,6 @@ def generate_html(data, charts):
                                 </td>
                             </tr>
                         </table>
-                        </div>
-                        <!--[if mso]>
-                        </td>
-                        </tr>
-                        </table>
-                        <![endif]-->
                     </td>
                 </tr>
             </table>
@@ -563,7 +482,7 @@ def generate_categories_html(categories):
                 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                     <thead style="background-color: {BG_COLOR}; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">
                         <tr>
-                            <th class="mobile-hidden" style="padding: 12px 20px; text-align: center; color: #999; border-bottom: 2px solid {BORDER_COLOR}; mso-hide: all;">구분</th>
+                            <th class="mobile-hidden" style="padding: 12px 20px; text-align: center; color: #999; border-bottom: 2px solid {BORDER_COLOR};">구분</th>
                             <th style="padding: 12px 20px; text-align: center; color: #999; border-bottom: 2px solid {BORDER_COLOR};">상세 구분</th>
                             <th style="padding: 12px 20px; text-align: center; color: #999; border-bottom: 2px solid {BORDER_COLOR};">이번주 UV</th>
                             <th style="padding: 12px 20px; text-align: center; color: #999; border-bottom: 2px solid {BORDER_COLOR};">지난주 UV</th>
@@ -612,7 +531,7 @@ def generate_categories_html(categories):
 
             html += f"""
                 <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td class="mobile-hidden" style="padding: 10px 20px; font-weight: 500; color: #999; text-align: center; mso-hide: all;">{group_name.split()[0]}</td>
+                    <td class="mobile-hidden" style="padding: 10px 20px; font-weight: 500; color: #999; text-align: center;">{group_name.split()[0]}</td>
                     <td style="padding: 10px 20px; font-weight: 500; color: {TEXT_COLOR}; text-align: center;">{name}</td>
                     <td style="padding: 10px 20px; text-align: right; font-weight: 600; color: {TEXT_COLOR};">{current_uv:,}</td>
                     <td style="padding: 10px 20px; text-align: right; color: #999;">{prev_uv:,}</td>
@@ -972,9 +891,8 @@ def create_table_html(data_source, keys, headers):
 
 def main():
     # 우선순위: 1) Target JSON (2025), 2) Fallback
-    base_dir = os.getcwd()
-    json_path_target = os.path.join(base_dir, 'data', 'json', '2025년 12월 3주차 주간 UV 레포트현황_20260105_175711.json')
-    json_path_fallback = os.path.join(base_dir, 'data', 'html', 'extracted_data.json')
+    json_path_target = r"c:\Users\HANA\Desktop\cob_weekly\data\json\2025년 12월 3주차 주간 UV 레포트현황_20260105_175711.json"
+    json_path_fallback = r"c:\Users\HANA\Desktop\cob_weekly\data\html\extracted_data.json"
     data = None
 
     # Try Target JSON first
@@ -995,7 +913,7 @@ def main():
 
     # If no data, try HTML (with robust search)
     if not data:
-        dir_path = os.path.join(base_dir, 'data', 'html')
+        dir_path = r"c:\Users\HANA\Desktop\cob_weekly\data\html"
         file_path = None
         try:
             for f in os.listdir(dir_path):
@@ -1016,7 +934,7 @@ def main():
             print("[ERROR] No data source found.")
             return
 
-    output_path = os.path.join(base_dir, 'email_report_sample.html')
+    output_path = r"c:\Users\HANA\Desktop\cob_weekly\email_report_sample.html"
     
     charts = {}
     
