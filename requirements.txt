@@ -6,6 +6,7 @@ python-multipart==0.0.20
 # Data Processing
 pandas==2.3.3
 openpyxl==3.1.5
+matplotlib==3.9.3
 
 # AWS
 boto3==1.35.94

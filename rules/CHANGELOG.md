@@ -15,6 +15,21 @@ AI는 작업 완료 후 이 문서를 갱신해야 합니다.
 
 ---
 
+## 2026-03-04
+
+- **변경 대상**: `dashboard/src/components/DashboardPreview.jsx`, `App.jsx`, `main.jsx`, `ErrorBoundary.jsx` (신규)
+- **유형**: [기능개선], [오류수정]
+- **내용**:
+  - **작업 요약**: AI 요약 수정 버튼 클릭 시 흰 화면 현상 대응 및 수정/추가/삭제 기능 강화
+  - **수정 내용**:
+    - **AI 요약 수정 모드**: 기생성된 AI 요약 유지, 수정·추가·삭제 지원 (추가 버튼, 삭제 버튼 per 항목)
+    - **방어 로직**: `handleEditInsights`에서 title/content를 `String()`으로 강제, input/textarea value에 `String()` 적용, `coBrandTop20`/`categories` null-safe 처리
+    - **상태 업데이트**: `requestAnimationFrame`으로 수정 모드 진입 시 렌더 블로킹 완화
+    - **Error Boundary**: `ErrorBoundary.jsx` 신규 생성, `main.jsx`/`App.jsx`에 적용하여 크래시 시 에러 메시지 표시
+  - **재발 방지**: aiInsight 사용처(exportUtils, generate_email_report)와 `{ title, content }` 구조 호환 유지. 수정 시 이 기준을 훼손하지 말 것.
+
+---
+
 ## 2026-01-16
 
 - **변경 대상**: `server.py`

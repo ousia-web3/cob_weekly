@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import json
 import boto3
+
+from bedrock_devops_hint import bedrock_invoke_failure_hint
 import io
 import traceback
 from datetime import datetime, timedelta
@@ -10,14 +12,20 @@ from dotenv import load_dotenv
 import os
 import pytz
 
-# Load environment variables from .env file
-load_dotenv()
+# Load .env next to this file so Bedrock settings apply even if cwd is elsewhere (e.g. dashboard/)
+_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(_ROOT_DIR, ".env"))
 
-# Import report generation logic
+# Import report generation logic (matplotlib 등 — requirements.txt 참고)
 try:
-    from generate_email_report import generate_html, create_trend_chart
+    from generate_email_report import create_trend_chart, generate_html
 except ImportError:
-    print("Warning: Could not import generate_email_report. Make sure it exists in the same directory.")
+    create_trend_chart = None  # type: ignore[assignment, misc]
+    generate_html = None  # type: ignore[assignment, misc]
+    print(
+        "Warning: Could not import generate_email_report "
+        "(pip install -r requirements.txt). 이메일 차트/HTML 생성은 비활성화됩니다."
+    )
 
 
 app = FastAPI()
@@ -88,10 +96,57 @@ app.add_middleware(
 )
 
 # AWS Bedrock Configuration
-BEDROCK_REGION = os.getenv('AWS_REGION', 'us-west-2')
-MODEL_ID = os.getenv('MODEL_ID', 'anthropic.claude-3-5-sonnet-20241022-v2:0')
+# Prefer AWS_BEDROCK_REGION so Bedrock calls can differ from other AWS_REGION uses.
+BEDROCK_REGION = (
+    os.getenv("AWS_BEDROCK_REGION")
+    or os.getenv("BEDROCK_REGION")
+    or os.getenv("AWS_REGION")
+    or "ap-northeast-2"
+)
+# Claude Sonnet 4.6: base model ID는 on-demand에 inference profile 필요 (AWS docs: global./us./eu.*).
+_BEDROCK_SONNET_46_BASE = "anthropic.claude-sonnet-4-6"
+_BEDROCK_SONNET_46_PROFILE_US = "us.anthropic.claude-sonnet-4-6"
+_BEDROCK_SONNET_46_PROFILE_GLOBAL = "global.anthropic.claude-sonnet-4-6"
+_BEDROCK_SONNET_46_PROFILE_EU = "eu.anthropic.claude-sonnet-4-6"
+_BEDROCK_SONNET_46_PROFILES = frozenset(
+    {
+        _BEDROCK_SONNET_46_PROFILE_US,
+        _BEDROCK_SONNET_46_PROFILE_GLOBAL,
+        _BEDROCK_SONNET_46_PROFILE_EU,
+    }
+)
+
+
+def _default_sonnet_46_profile_for_region(region: str) -> str:
+    r = (region or "").lower()
+    if r.startswith("us-"):
+        return _BEDROCK_SONNET_46_PROFILE_US
+    if r.startswith("eu-"):
+        return _BEDROCK_SONNET_46_PROFILE_EU
+    return _BEDROCK_SONNET_46_PROFILE_GLOBAL
+
+
+MODEL_ID = (
+    os.getenv("MODEL_ID")
+    or os.getenv("AWS_BEDROCK_MODEL_ID")
+    or _default_sonnet_46_profile_for_region(BEDROCK_REGION)
+)
+if MODEL_ID == _BEDROCK_SONNET_46_BASE:
+    MODEL_ID = _default_sonnet_46_profile_for_region(BEDROCK_REGION)
+    print(
+        "[Bedrock] Claude Sonnet 4.6 base model ID requires an inference profile; "
+        f"using {MODEL_ID}."
+    )
+else:
+    _expected_s46 = _default_sonnet_46_profile_for_region(BEDROCK_REGION)
+    if MODEL_ID in _BEDROCK_SONNET_46_PROFILES and MODEL_ID != _expected_s46:
+        MODEL_ID = _expected_s46
+        print(
+            "[Bedrock] Region/profile mismatch for Claude Sonnet 4.6; "
+            f"using {MODEL_ID}."
+        )
 ANTHROPIC_VERSION = os.getenv('ANTHROPIC_VERSION', 'bedrock-2023-05-31')
-MAX_TOKENS = int(os.getenv('MAX_TOKENS', '1000'))
+MAX_TOKENS = int(os.getenv('MAX_TOKENS', '4096'))
 PROMPT_TEMPLATE = os.getenv('AI_PROMPT_TEMPLATE', '')
 
 # TOP 20 추출 설정
@@ -156,27 +211,35 @@ def extract_top20_from_cells(df):
     - 행 129 (인덱스 128): 채널유형
     - 행 130 (인덱스 129): UV
     - 행 133 (인덱스 132): 증감률
-    """
-    top20_data = []
     
+    시트 행 수가 부족한 경우(예: 다른 임직원자리 시트) 빈 리스트를 반환하며,
+    parse_excel_data에서 브랜드몰/제휴사 TOP10 기반 fallback이 사용됨.
+    """
     # 행 인덱스 (0-based)
     name_row = 127      # 행 128 (대리점명)
     type_row = 128      # 행 129 (채널유형)
     uv_row = 129        # 행 130 (UV)
     growth_row = 132    # 행 133 (증감률)
-    
+    min_required_rows = growth_row + 1  # 133
+
+    # 시트 행 수 부족 시 (예: 다른 임직원자리 = 124행) 인덱스 오류 방지
+    if len(df) < min_required_rows:
+        print(f"⚠ TOP 20 영역 없음: 시트 행 수={len(df)}, 필요 행 수={min_required_rows}. Fallback 사용.")
+        return []
+
+    top20_data = []
     # 열 시작 인덱스 (실제 데이터는 D열부터 = 인덱스 3)
     start_col = 3
-    
+
     # 최대 20개까지 읽기
     for i in range(20):
         col_idx = start_col + i
-        
+
         # 열이 범위를 벗어나면 중단
         if col_idx >= len(df.columns):
             break
-        
-        # 대리점명
+
+        # 대리점명 (행 범위는 위에서 이미 검사됨)
         name = df.iloc[name_row, col_idx]
         if pd.isna(name):
             break  # 빈 열이면 종료
@@ -332,6 +395,8 @@ def generate_ai_insights(df=None, context_data=None):
         # 깔끔하게 템플릿에 다 포함된 것으로 가정하고 추가 코드는 제거.
 
         
+        if DEBUG_MODE:
+            print(f"[Bedrock] region={BEDROCK_REGION} modelId={MODEL_ID}")
         print("Calling AWS Bedrock...")
         bedrock = boto3.client(service_name='bedrock-runtime', region_name=BEDROCK_REGION)
         
@@ -353,8 +418,30 @@ def generate_ai_insights(df=None, context_data=None):
             contentType='application/json'
         )
         
-        response_body = json.loads(response.get('body').read())
-        result_text = response_body['content'][0]['text']
+        raw_bytes = response.get('body').read()
+        if DEBUG_MODE:
+            print(f"[Bedrock] 응답 크기: {len(raw_bytes)} bytes")
+            print(f"[Bedrock] HTTP status: {response.get('ResponseMetadata', {}).get('HTTPStatusCode')}")
+        if not raw_bytes:
+            raise RuntimeError(
+                f"Bedrock가 빈 응답을 반환했습니다 (0 bytes). "
+                f"HTTP={response.get('ResponseMetadata', {}).get('HTTPStatusCode')} "
+                f"modelId={MODEL_ID}"
+            )
+        response_body = json.loads(raw_bytes)
+        
+        if response_body.get('type') == 'error':
+            err_detail = response_body.get('error', {})
+            raise RuntimeError(
+                f"Bedrock 모델 오류: [{err_detail.get('type')}] {err_detail.get('message')}"
+            )
+        
+        content_list = response_body.get('content', [])
+        if not content_list:
+            raise RuntimeError(
+                f"Bedrock 응답에 content가 비어 있습니다. stop_reason={response_body.get('stop_reason')}"
+            )
+        result_text = content_list[0].get('text', '')
 
         # Debug: Print actual AI response
         print("=" * 80)
@@ -362,19 +449,48 @@ def generate_ai_insights(df=None, context_data=None):
         print(result_text)
         print("=" * 80)
 
-        # Extract JSON from text
-        start = result_text.find('[')
-        end = result_text.rfind(']') + 1
+        # Extract JSON array from AI response (may be wrapped in ```json ... ```)
+        stop_reason = response_body.get("stop_reason", "")
+        if stop_reason == "max_tokens":
+            print(f"[Bedrock] 주의: stop_reason=max_tokens — 응답이 MAX_TOKENS({MAX_TOKENS})로 잘렸을 수 있습니다.")
+
+        cleaned = result_text.strip()
+        # 마크다운 코드블록 제거
+        import re
+        cleaned = re.sub(r'^```(?:json)?\s*\n?', '', cleaned)
+        cleaned = re.sub(r'\n?```\s*$', '', cleaned)
+        cleaned = cleaned.strip()
+
+        start = cleaned.find('[')
+        end = cleaned.rfind(']') + 1
         
         insights = []
-        if start != -1 and end != -1:
-            json_str = result_text[start:end]
+        if start != -1 and end > start:
+            json_str = cleaned[start:end]
             print(f"추출된 JSON: {json_str[:200]}...")
-            insights = json.loads(json_str)
+            try:
+                insights = json.loads(json_str)
+            except json.JSONDecodeError:
+                # max_tokens로 잘린 경우: 마지막 완전한 객체까지 복구 시도
+                last_close = json_str.rfind('}')
+                if last_close > 0:
+                    repaired = json_str[:last_close + 1] + ']'
+                    try:
+                        insights = json.loads(repaired)
+                        print(f"[Bedrock] 잘린 JSON 복구 성공 ({len(insights)}개 인사이트)")
+                    except json.JSONDecodeError as je2:
+                        print(f"JSON 복구도 실패: {je2}")
+                        insights = [
+                            {"title": "AI 응답 파싱 오류", "content": f"JSON 파싱/복구 실패.\n\n실제 응답:\n{result_text[:800]}"}
+                        ]
+                else:
+                    insights = [
+                        {"title": "AI 응답 파싱 오류", "content": f"JSON 파싱 실패.\n\n실제 응답:\n{result_text[:800]}"}
+                    ]
         else:
             print(f"JSON 찾기 실패 - start: {start}, end: {end}")
             insights = [
-                {"title": "AI 응답 파싱 오류", "content": f"AI 응답에서 JSON을 찾을 수 없습니다.\n\n실제 응답:\n{result_text[:500]}"}
+                {"title": "AI 응답 파싱 오류", "content": f"AI 응답에서 JSON을 찾을 수 없습니다.\n\n실제 응답:\n{result_text[:800]}"}
             ]
             
         return {
@@ -384,13 +500,24 @@ def generate_ai_insights(df=None, context_data=None):
             
     except Exception as e:
         print(f"AI Generation Error: {e}")
-        # Return mock insights if AI fails (e.g. no credentials)
+        err = str(e)
+        hint = bedrock_invoke_failure_hint(
+            e,
+            bedrock_region=BEDROCK_REGION,
+            model_id=MODEL_ID,
+        )
+        if "inference profile" in err.lower():
+            hint += (
+                "\n\n[앱 설정 참고] Claude Sonnet 4.6 베이스 ID만 쓸 경우 inference profile이 필요할 수 있음. "
+                "서울 등: global.anthropic.claude-sonnet-4-6 · 미국: us.… · 유럽: eu.… "
+                "환경변수 반영 후 서버 재시작."
+            )
         return {
             "insights": [
-                {"title": "AI 분석 실패", "content": f"AI 요약을 생성하는 중 오류가 발생했습니다: {str(e)}"},
-                {"title": "시스템 메시지", "content": "AWS 자격 증명을 확인하거나 로컬 환경 설정을 점검해주세요."}
+                {"title": "AI 분석 실패", "content": f"AI 요약을 생성하는 중 오류가 발생했습니다: {err}"},
+                {"title": "시스템 메시지 (DevOps 전달용)", "content": hint},
             ],
-            "context": {}
+            "context": {},
         }
 
 def parse_excel_data(df):
@@ -583,15 +710,12 @@ def parse_excel_data(df):
     growth_decimal = get_val(14, col_rate)
     
     # 증감률 처리 함수 (공통 사용)
+    # 엑셀 % 셀은 항상 소수로 저장됨 (543.4% → 5.434, 5.4% → 0.054). 표시용으로 * 100 적용.
     def parse_rate(val):
-        if val == 0: return 0
+        if val == 0:
+            return 0
         try:
-            # 절댓값이 1 이하면 소수로 간주 (0.044 → 4.4%)
-            if abs(val) <= 1:
-                return round(val * 100, 1)
-            else:
-                # 이미 퍼센트 형식 (4.4 → 4.4%)
-                return round(val, 1)
+            return round(float(val) * 100, 1)
         except Exception as e:
             if DEBUG_MODE:
                 print(f"⚠️ parse_rate 오류 (값:{val}): {e}")
@@ -921,7 +1045,6 @@ async def save_json(data: dict):
 # ==========================================
 from email_service import EmailService
 from fastapi.responses import HTMLResponse
-from generate_email_report import generate_html, create_trend_chart
 
 email_service = EmailService()
 
@@ -1049,6 +1172,11 @@ async def import_recipients_from_env(data: dict):
 async def send_email_endpoint(data: dict):
     """이메일 생성 및 발송"""
     try:
+        if create_trend_chart is None or generate_html is None:
+            raise HTTPException(
+                status_code=503,
+                detail="generate_email_report 미로드(matplotlib 등). pip install -r requirements.txt 후 재시작하세요.",
+            )
         # 1. HTML 생성
         print("이메일용 HTML 생성 시작...")
         charts = {}

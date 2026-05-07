@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Edit2, Save, X, RefreshCw } from "lucide-react";
+import { Edit2, Save, X, RefreshCw, Plus, Trash2 } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -120,8 +120,20 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
   } = data;
 
   const handleEditInsights = () => {
-    setTempInsights(aiInsight ? [...aiInsight] : []);
-    setIsEditingInsights(true);
+    try {
+      const insights = Array.isArray(aiInsight) && aiInsight.length > 0
+        ? aiInsight.map((i) => ({
+            title: String(i?.title ?? ''),
+            content: String(i?.content ?? ''),
+          }))
+        : [];
+      setTempInsights(insights);
+      setIsEditingInsights(true);
+    } catch (err) {
+      console.error('handleEditInsights error:', err);
+      setTempInsights([]);
+      setIsEditingInsights(true);
+    }
   };
 
   const handleSaveInsights = () => {
@@ -138,12 +150,22 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
 
   const handleInsightChange = (index, field, value) => {
     const newInsights = [...tempInsights];
-    newInsights[index] = { ...newInsights[index], [field]: value };
+    const current = newInsights[index] ?? { title: '', content: '' };
+    newInsights[index] = { ...current, [field]: value };
     setTempInsights(newInsights);
   };
 
+  const handleAddInsight = () => {
+    setTempInsights((prev) => [...prev, { title: '', content: '' }]);
+  };
+
+  const handleRemoveInsight = (index) => {
+    setTempInsights((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // Channel Type Data Calculation (if not provided)
-  const channelTypeData = coBrandTop20.reduce((acc, item) => {
+  const coBrandSafe = coBrandTop20 ?? [];
+  const channelTypeData = coBrandSafe.reduce((acc, item) => {
     const existing = acc.find((d) => d.name === item.type);
     if (existing) {
       existing.value += 1;
@@ -154,7 +176,7 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
   }, []);
   channelTypeData.sort((a, b) => b.value - a.value);
 
-  const top20SumUV = coBrandTop20.reduce((acc, item) => acc + item.uv, 0);
+  const top20SumUV = coBrandSafe.reduce((acc, item) => acc + (item?.uv ?? 0), 0);
 
   return (
     <div className="min-h-screen bg-slate-100 p-3 md:p-8 font-sans text-slate-800">
@@ -182,6 +204,13 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
           <div className="flex gap-2">
             {isEditingInsights ? (
               <>
+                <button
+                  onClick={handleAddInsight}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs rounded hover:bg-slate-50 transition-colors"
+                  title="인사이트 추가"
+                >
+                  <Plus className="w-3 h-3" /> 추가
+                </button>
                 <button
                   onClick={handleSaveInsights}
                   className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition-colors"
@@ -215,17 +244,28 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
           </div>
         </div>
         
-        <div className={`bg-indigo-50 border-l-4 border-indigo-500 p-5 rounded-r-md ${isEditingInsights ? 'ring-2 ring-indigo-200' : ''}`}>
-          {isEditingInsights ? (
-            // Edit Mode
-            <div className="space-y-4">
+        <div
+          className={`bg-indigo-50 border-l-4 border-indigo-500 p-5 rounded-r-md ${isEditingInsights ? 'ring-2 ring-indigo-200' : ''}`}
+        >
+          {/* Edit Mode - CSS 토글로 DOM 구조 변경 최소화 (Recharts insertBefore 오류 방지) */}
+          <div className="space-y-4" style={{ display: isEditingInsights ? 'block' : 'none' }}>
               {tempInsights.map((insight, idx) => (
-                <div key={idx} className="bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                <div key={idx} className="bg-white p-3 rounded border border-indigo-100 shadow-sm relative group">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold text-indigo-600">제목 {idx + 1}</label>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveInsight(idx)}
+                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                   <div className="mb-2">
-                    <label className="block text-xs font-bold text-indigo-600 mb-1">제목 {idx + 1}</label>
                     <input
                       type="text"
-                      value={insight.title}
+                      value={String(insight?.title ?? '')}
                       onChange={(e) => handleInsightChange(idx, 'title', e.target.value)}
                       className="w-full text-sm font-bold text-indigo-700 border-b border-indigo-200 focus:border-indigo-500 focus:outline-none py-1"
                       placeholder="인사이트 제목 입력"
@@ -234,7 +274,7 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">내용</label>
                     <textarea
-                      value={insight.content}
+                      value={String(insight?.content ?? '')}
                       onChange={(e) => handleInsightChange(idx, 'content', e.target.value)}
                       className="w-full text-sm text-slate-700 border border-slate-200 rounded p-2 focus:border-indigo-500 focus:outline-none min-h-[80px]"
                       placeholder="인사이트 내용 입력"
@@ -247,10 +287,10 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
                   편집할 내용이 없습니다.
                 </div>
               )}
-            </div>
-          ) : (
-            // View Mode
-            aiInsight ? (
+          </div>
+          {/* View Mode - display 토글로 DOM 유지 */}
+          <div style={{ display: isEditingInsights ? 'none' : 'block' }}>
+            {aiInsight ? (
               aiInsight.map((insight, idx) => (
                 <div key={idx} className="mb-4 last:mb-0">
                   <h4 className="font-bold text-indigo-700 text-base mb-1">
@@ -265,8 +305,8 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
               <p className="text-slate-500 italic">
                 AI 요약이 생성되지 않았습니다.
               </p>
-            )
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -546,7 +586,7 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {coBrandTop20.map((item) => (
+              {coBrandSafe.map((item) => (
                 <tr
                   key={item.rank}
                   className="hover:bg-slate-50 transition-colors"
@@ -572,7 +612,7 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
                     {formatNumber(item.uv)}
                   </td>
                   <td className="px-3 py-2 md:px-6 md:py-3 text-right text-slate-500">
-                    {((item.uv / top20SumUV) * 100).toFixed(2)}%
+                    {(top20SumUV ? (item.uv / top20SumUV) * 100 : 0).toFixed(2)}%
                   </td>
                   <td className="px-3 py-2 md:px-6 md:py-3 text-center font-medium whitespace-nowrap">
                     {Math.abs(item.growth) < 0.05 ? (
@@ -661,7 +701,7 @@ const DashboardPreview = ({ data, onInsightsChange, onRegenerateInsights }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {categories.map((group, groupIdx) => (
+              {(categories ?? []).map((group, groupIdx) => (
                 <React.Fragment key={groupIdx}>
                   {/* Group Header */}
                   <tr className="bg-slate-50">

@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import GeneratorControls from './components/GeneratorControls';
 import DashboardPreview from './components/DashboardPreview';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import EmailBodyEditor from './components/EmailBodyEditor';
 import EmailHistory from './components/EmailHistory';
 import { parseExcel } from './utils/excelParser';
@@ -337,11 +338,13 @@ function App() {
         <div className="mt-8 border-t border-slate-200 pt-8">
           <h2 className="text-xl font-bold mb-4 text-slate-800 px-4">미리보기</h2>
           <div className="border border-slate-200 rounded-xl overflow-hidden shadow-lg bg-white">
-            <DashboardPreview 
-              data={dashboardData} 
-              onInsightsChange={handleInsightsChange}
-              onRegenerateInsights={handleRegenerateInsights}
-            />
+            <ErrorBoundary>
+              <DashboardPreview 
+                data={dashboardData} 
+                onInsightsChange={handleInsightsChange}
+                onRegenerateInsights={handleRegenerateInsights}
+              />
+            </ErrorBoundary>
           </div>
         </div>
 

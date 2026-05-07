@@ -5,7 +5,7 @@
 ## 주요 기능
 
 - 📊 엑셀 파일 업로드 및 자동 파싱
-- 🤖 AI 기반 트래픽 분석 요약 생성 (AWS Bedrock Claude 3.5 Sonnet)
+- 🤖 AI 기반 트래픽 분석 요약 생성 (AWS Bedrock Claude Sonnet 4.6)
 - 📈 인터랙티브 차트 및 테이블 시각화
 - 📄 독립형 HTML 보고서 내보내기
 - 💾 JSON/HTML 파일 자동 저장 (data 폴더)
@@ -162,7 +162,7 @@ cob_weekly/
 
 ### AI 요약
 
-- AWS Bedrock Claude 3.5 Sonnet 사용
+- AWS Bedrock Claude Sonnet 4.6 사용 (`MODEL_ID=anthropic.claude-sonnet-4-6`)
 - 주간 트래픽 핵심 인사이트 생성
 - 커스터마이징 가능한 프롬프트
 
@@ -192,7 +192,7 @@ AWS Bedrock을 사용하려면 AWS 자격 증명이 필요합니다. 다음 방�
 - Python 3.11+
 - FastAPI
 - pandas, openpyxl
-- AWS Bedrock (Claude 3.5 Sonnet)
+- AWS Bedrock (Claude Sonnet 4.6)
 
 ### 프론트엔드
 

@@ -46,3 +46,8 @@ AI는 다음 질문에 모두 "예"라고 답할 수 있을 때만 작업을 완
 3. **`rules/CHANGELOG.md`에 변경 내역을 기록했는가?**
 4. **오류 수정의 경우 `logs/ERROR_HISTORY.md`를 업데이트했는가?**
 5. 불필요하게 생성된 임시 파일은 정리했는가?
+
+### 4.3. 완료 기준 유지 (Completion Standard - 필수 준수)
+- **`rules/COMPLETION_STANDARD.md`** 에 정의된 기준은 반드시 유지되어야 합니다.
+- AI 요약 수정/추가/삭제 기능, 방어 로직, Error Boundary, aiInsight 데이터 구조(`{ title, content }`)를 훼손하지 마십시오.
+- 해당 영역 수정 시 해당 문서를 선행 참조하십시오.

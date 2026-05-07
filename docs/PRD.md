@@ -16,7 +16,7 @@
 4.  **처리:**
     - 시스템이 파일을 파싱합니다.
     - 지표(전주 대비 증감률, 점유율 등)를 계산합니다.
-    - 시스템이 AI(Claude 3.5 Sonnet)를 호출하여 "핵심 요약(Executive Summary)"을 생성합니다.
+    - 시스템이 AI(Claude Sonnet 4.6)를 호출하여 "핵심 요약(Executive Summary)"을 생성합니다.
 5.  **미리보기:** 사용자가 데이터와 AI 요약이 채워진 대시보드를 확인합니다.
 6.  **내보내기:** "대시보드 생성" 버튼을 클릭하여 보고서를 독립된 HTML 파일로 저장하거나 JSON 데이터로 저장합니다.
 
@@ -39,7 +39,7 @@
 
 ### 3.2 AI 통합
 
-- **모델:** Anthropic Claude 3.5 Sonnet (AWS Bedrock 경유).
+- **모델:** Anthropic Claude Sonnet 4.6 (`anthropic.claude-sonnet-4-6`, AWS Bedrock 경유).
 - **리전:** `us-west-2`.
 - **워크플로우 (Backend Integration):**
   1. **API 호출:** 프론트엔드에서 엑셀 파일 업로드 시 백엔드 API(`/analyze`) 호출.

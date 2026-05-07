@@ -27,13 +27,17 @@ class EmailService:
 
         # Microsoft 계정 자동 감지
         if self.sender_email and (
-            "@outlook.com" in self.sender_email
-            or "@hotmail.com" in self.sender_email
-            or "@hanatour.com" in self.sender_email
+            "@outlook.com" in self.sender_email or "@hotmail.com" in self.sender_email
         ):
             self.smtp_server = "smtp-mail.outlook.com"
             self.smtp_port = 587
-            logger.info("Microsoft 계정 SMTP 설정 사용")
+            logger.info("Microsoft 개인 계정 SMTP 설정 사용")
+        elif self.sender_email and "@hanatour.com" in self.sender_email:
+            # Microsoft 365 조직 계정: smtp.office365.com
+            # MFA 미사용 시: 일반 아이디/비밀번호로 로그인 (앱 비밀번호 관리센터 미지원 환경)
+            self.smtp_server = self.smtp_server or "smtp.office365.com"
+            self.smtp_port = 587
+            logger.info("Microsoft 365 SMTP 설정 사용 (일반 ID/비밀번호 로그인)")
 
         self._ensure_data_dir()
 
@@ -179,9 +183,28 @@ class EmailService:
 
             return True, result_message
 
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP 인증 오류: {e}")
+            hint = (
+                "MFA 미사용 계정: .env의 EMAIL_PASSWORD에 일반 로그인 비밀번호를 사용하세요. "
+                "MFA 사용 계정: '앱 비밀번호'를 사용하세요. "
+                "또한 관리자에게 메일함 'SMTP 인증(Authenticated SMTP)' 사용 허용 요청하세요."
+            )
+            error_msg = f"이메일 발송 중 오류 발생: {str(e)}. {hint}"
+            self.add_history_entry(subject, recipients, "fail", error_msg, html_path)
+            return False, error_msg
         except Exception as e:
+            err_str = str(e)
             logger.error(f"SMTP 연결/발송 오류: {e}")
-            error_msg = f"이메일 발송 중 오류 발생: {str(e)}"
+            if "535" in err_str and ("Authentication" in err_str or "credentials" in err_str):
+                hint = (
+                    "MFA 미사용: 일반 비밀번호를 .env의 EMAIL_PASSWORD에 사용하세요. "
+                    "MFA 사용: 앱 비밀번호를 사용하세요. "
+                    "관리자에게 메일함 'SMTP 인증' 허용 요청하세요."
+                )
+                error_msg = f"이메일 발송 중 오류 발생: {err_str}. {hint}"
+            else:
+                error_msg = f"이메일 발송 중 오류 발생: {err_str}"
             self.add_history_entry(subject, recipients, "fail", error_msg, html_path)
             return False, error_msg
 
