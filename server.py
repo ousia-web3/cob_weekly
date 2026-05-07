@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import json
 import boto3
+from botocore.exceptions import ClientError
 
 from bedrock_devops_hint import bedrock_invoke_failure_hint
 import io
@@ -36,6 +37,7 @@ from pydantic import BaseModel
 class RegenerateRequest(BaseModel):
     main_data: str
     top10_data: str
+    dashboard_data: dict | None = None
 
 class PromptRequest(BaseModel):
     content: str
@@ -48,6 +50,8 @@ async def regenerate_summary(request: RegenerateRequest):
             "main_data": request.main_data,
             "top10_data": request.top10_data
         }
+        if request.dashboard_data:
+            context_data["dashboard_data"] = request.dashboard_data
         
         ai_result = generate_ai_insights(context_data=context_data)
         return ai_result
@@ -145,6 +149,12 @@ else:
             "[Bedrock] Region/profile mismatch for Claude Sonnet 4.6; "
             f"using {MODEL_ID}."
         )
+BEDROCK_INFERENCE_PROFILE_ID = (
+    os.getenv('BEDROCK_INFERENCE_PROFILE_ID')
+    or os.getenv('AWS_BEDROCK_INFERENCE_PROFILE_ID')
+    or os.getenv('BEDROCK_INFERENCE_PROFILE_ARN')
+    or os.getenv('AWS_BEDROCK_INFERENCE_PROFILE_ARN')
+)
 ANTHROPIC_VERSION = os.getenv('ANTHROPIC_VERSION', 'bedrock-2023-05-31')
 MAX_TOKENS = int(os.getenv('MAX_TOKENS', '4096'))
 PROMPT_TEMPLATE = os.getenv('AI_PROMPT_TEMPLATE', '')
@@ -154,6 +164,135 @@ USE_OCR_FOR_TOP20 = False  # True: OCR 사용, False: 텍스트 영역 사용
 
 # 디버그 모드
 DEBUG_MODE = True  # True: 상세 로그 출력, False: 최소 로그만 출력
+
+def get_inference_profile_prefix(region):
+    region = (region or "").lower()
+    if region.startswith("us-"):
+        return "us"
+    if region.startswith("eu-"):
+        return "eu"
+    if region.startswith("ap-") or region.startswith("apac-"):
+        return "apac"
+    return ""
+
+def get_bedrock_model_candidates():
+    candidates = []
+    if BEDROCK_INFERENCE_PROFILE_ID:
+        candidates.append(BEDROCK_INFERENCE_PROFILE_ID)
+
+    model_id = (MODEL_ID or "").strip()
+    if model_id:
+        profile_prefix = get_inference_profile_prefix(BEDROCK_REGION)
+        already_profile = model_id.startswith(("us.", "eu.", "apac.", "arn:"))
+        if profile_prefix and model_id.startswith("anthropic.") and not already_profile:
+            candidates.append(f"{profile_prefix}.{model_id}")
+        candidates.append(model_id)
+
+    unique_candidates = []
+    for candidate in candidates:
+        if candidate and candidate not in unique_candidates:
+            unique_candidates.append(candidate)
+    return unique_candidates
+
+def invoke_bedrock_model(bedrock, body):
+    last_error = None
+    for model_id in get_bedrock_model_candidates():
+        try:
+            print(f"Bedrock model 호출 시도: {model_id}")
+            return bedrock.invoke_model(
+                body=body,
+                modelId=model_id,
+                accept='application/json',
+                contentType='application/json'
+            )
+        except ClientError as e:
+            last_error = e
+            error_message = str(e)
+            print(f"Bedrock 호출 실패 ({model_id}): {error_message}")
+            if "on-demand throughput" in error_message or "ValidationException" in error_message:
+                continue
+            raise
+
+    if last_error:
+        raise last_error
+    raise RuntimeError("Bedrock model ID가 설정되지 않았습니다.")
+
+def build_local_ai_insights(df=None, context_data=None, error=None):
+    try:
+        parsed = None
+        if context_data:
+            parsed = context_data.get("dashboard_data")
+
+        if df is None:
+            if not parsed:
+                return [
+                    {
+                        "title": "로컬 요약 생성",
+                        "content": "Bedrock 호출이 실패해 로컬 규칙 기반 요약으로 대체했습니다. 파일을 다시 업로드하면 파싱 데이터 기준의 상세 요약을 생성합니다."
+                    },
+                    {
+                        "title": "설정 확인 필요",
+                        "content": f"모델 호출 오류: {error}" if error else "Bedrock inference profile 또는 모델 ID 설정을 확인해주세요."
+                    }
+                ]
+        else:
+            parsed = parse_excel_data(df)
+
+        summary = parsed.get("summary", {})
+        categories = parsed.get("categories", [])
+        top20 = parsed.get("coBrandTop20", [])
+        detailed = parsed.get("detailedTop10", {})
+
+        total_uv = summary.get("totalUV", 0)
+        prev_total_uv = summary.get("prevTotalUV", 0)
+        growth = summary.get("growth", 0)
+        direction = "증가" if growth > 0 else "감소" if growth < 0 else "보합"
+
+        best = summary.get("bestGrowth", {"name": "-", "rate": 0})
+        worst = summary.get("worstDrop", {"name": "-", "rate": 0})
+        top_partner = top20[0] if top20 else {"name": "-", "uv": 0, "growth": 0}
+
+        category_rows = [
+            (group.get("group"), item)
+            for group in categories
+            for item in group.get("items", [])
+            if item.get("current", 0) > 0
+            and not (group.get("group") == "공통" and item.get("name") == "전체")
+        ]
+        category_rows.sort(key=lambda row: row[1].get("current", 0), reverse=True)
+        leading_category = category_rows[0] if category_rows else ("-", {"name": "-", "current": 0, "rate": 0})
+
+        channel_summaries = []
+        for label, key in [("브랜드몰", "brandMall"), ("제휴사", "affiliate"), ("공식인증센터", "officialCenter")]:
+            info = detailed.get(key, {})
+            channel_summaries.append(f"{label} {info.get('totalUV', 0):,} UV({info.get('growth', 0):+.1f}%)")
+
+        return [
+            {
+                "title": "전체 트래픽 요약",
+                "content": f"이번 주 전체 UV는 {total_uv:,}명으로 전주 {prev_total_uv:,}명 대비 {growth:+.1f}% {direction}했습니다."
+            },
+            {
+                "title": "카테고리 성과",
+                "content": f"최대 성장 항목은 {best.get('name', '-')}({best.get('rate', 0):+.1f}%), 최대 하락 항목은 {worst.get('name', '-')}({worst.get('rate', 0):+.1f}%)입니다. UV 규모는 {leading_category[0]} {leading_category[1].get('name', '-')}가 {leading_category[1].get('current', 0):,}명으로 가장 큽니다."
+            },
+            {
+                "title": "코브랜드 TOP 20",
+                "content": f"TOP 20 1위는 {top_partner.get('name', '-')}로 {top_partner.get('uv', 0):,} UV를 기록했고 전주 대비 {top_partner.get('growth', 0):+.1f}% 변동했습니다."
+            },
+            {
+                "title": "채널별 TOP 10",
+                "content": " / ".join(channel_summaries)
+            }
+        ]
+    except Exception as local_error:
+        print(f"로컬 요약 생성 실패: {local_error}")
+        return [
+            {
+                "title": "로컬 요약 생성",
+                "content": f"Bedrock 호출이 실패해 로컬 요약으로 대체했습니다. 원인: {error}"
+            }
+        ]
 
 def get_last_week_range():
     """
@@ -411,12 +550,7 @@ def generate_ai_insights(df=None, context_data=None):
             ]
         })
         
-        response = bedrock.invoke_model(
-            body=body,
-            modelId=MODEL_ID,
-            accept='application/json',
-            contentType='application/json'
-        )
+        response = invoke_bedrock_model(bedrock, body)
         
         raw_bytes = response.get('body').read()
         if DEBUG_MODE:
@@ -512,12 +646,15 @@ def generate_ai_insights(df=None, context_data=None):
                 "서울 등: global.anthropic.claude-sonnet-4-6 · 미국: us.… · 유럽: eu.… "
                 "환경변수 반영 후 서버 재시작."
             )
+        local_insights = build_local_ai_insights(df=df, context_data=context_data, error=e)
         return {
-            "insights": [
-                {"title": "AI 분석 실패", "content": f"AI 요약을 생성하는 중 오류가 발생했습니다: {err}"},
-                {"title": "시스템 메시지 (DevOps 전달용)", "content": hint},
+            "insights": local_insights + [
+                {
+                    "title": "System message for DevOps",
+                    "content": f"AI generation failed: {err}\n\n{hint}",
+                },
             ],
-            "context": {},
+            "context": locals().get("context", context_data or {})
         }
 
 def parse_excel_data(df):
@@ -725,207 +862,93 @@ def parse_excel_data(df):
     
     print(f"전체 UV: {total_uv:,}, 전주 UV: {prev_total_uv:,}, 증감률: {growth_rate}%")
     
-    # 2. Categories 데이터 추출 - 고정 구조 사용
-    # 엑셀 데이터를 맵으로 저장
-    excel_data_map = {}
-    last_category = ""  # Forward Fill을 위한 변수
-    
+    # 2. Categories 데이터 추출
+    # 병합 셀/공백 셀 때문에 pandas가 구분 값을 비워 읽는 구간은 행 위치로 보정한다.
+    def normalize_label(value):
+        if value is None:
+            return ""
+        text = str(value).replace("\n", " ").strip()
+        text = " ".join(text.split())
+        return "" if text.lower() == "nan" else text
+
+    def infer_category_and_item(row_idx, raw_category, sub_category, last_category):
+        row_overrides = {
+            14: ("공통", "전체"),
+            15: ("공통", "메인"),
+            16: ("공통", "검색"),
+        }
+        if row_idx in row_overrides:
+            return row_overrides[row_idx]
+        if 17 <= row_idx <= 20:
+            return "패키지", normalize_label(sub_category)
+        if 21 <= row_idx <= 25:
+            return "항공(해외)", normalize_label(sub_category)
+        if 26 <= row_idx <= 30:
+            return "호텔(해외)", normalize_label(sub_category)
+
+        category = normalize_label(raw_category) or normalize_label(last_category)
+        item_name = normalize_label(sub_category)
+        if category in ["국내 패키지 (제주서브메인포함)", "국내패키지"]:
+            category = "국내 패키지"
+        if category in ["항공 (해외)"]:
+            category = "항공(해외)"
+        if category in ["호텔 (해외)", "호텔( 해외 )"]:
+            category = "호텔(해외)"
+        if category and not item_name:
+            item_name = "전체"
+        return category, item_name
+
+    categories_by_group = {}
+    last_category = ""
+    best_growth = {"name": "-", "rate": -999}
+    worst_drop = {"name": "-", "rate": 999}
+    target_groups = {"패키지", "항공(해외)", "호텔(해외)"}
+
     for row_idx in range(14, 51):  # 행 15-51
         raw_category = get_str(row_idx, 2)  # C열: 구분
         sub_category = get_str(row_idx, 3)  # D열: 상세 구분
-        
-        # Category Forward Fill Logic (공백 처리 개선)
-        # 공백 제거 후 검증
-        raw_category_clean = raw_category.strip() if raw_category else ""
-        if raw_category_clean and raw_category_clean != "nan":
-            last_category = raw_category_clean
-        
-        # 현재 카테고리 결정: 값이 있으면 그거 쓰고, 없으면 last_category 사용
-        category = raw_category_clean if raw_category_clean and raw_category_clean != "nan" else last_category
-        
-        if category or sub_category:
-            # nan 값을 빈 문자열로 처리
-            sub_clean = "" if (not sub_category or sub_category == "nan") else sub_category
-            key = f"{category}|{sub_clean}".strip()
-            current_val = get_val(row_idx, col_current)
-            prev_val = get_val(row_idx, col_prev)
-            rate_decimal = get_val(row_idx, col_rate)
-            
-            if current_val or prev_val: # 둘 중 하나라도 있으면 데이터 존재로 간주
-                rate = parse_rate(rate_decimal)
-                
-                excel_data_map[key] = {
-                    "current": int(current_val),
-                    "prev": int(prev_val),
-                    "rate": rate
-                }
-                
-                # 디버그: 모든 항목의 키 출력 (매핑 확인용)
-                if DEBUG_MODE:
-                    print(f"  행 {row_idx+1}: 키='{key}' | UV:{int(current_val):,} / 전주:{int(prev_val):,} / 증감률:{rate}%")
-                    # 특정 키 강조 출력
-                    if "국내 패키지" in key or "기획전" in key or "플레이스" in key:
-                        print(f"  ⭐ 중요: '{key}' (repr: {repr(key)})")
+        raw_category_clean = normalize_label(raw_category)
 
-    # 고정된 카테고리 구조 정의
-    fixed_categories = [
-        {
-            "group": "공통",
-            "items": [
-                {"name": "전체", "key": "전체|"},
-                {"name": "메인", "key": "메인|"},
-                {"name": "검색", "key": "검색|"},
-            ]
-        },
-        {
-            "group": "패키지",
-            "items": [
-                {"name": "대표상품", "key": "패키지|대표상품"},
-                {"name": "상품상세", "key": "패키지|상품상세"},
-                {"name": "예약하기", "key": "패키지|예약하기"},
-                {"name": "예약완료", "key": "패키지|예약완료"},
-            ]
-        },
-        {
-            "group": "해외 패키지",
-            "items": [
-                {"name": "서브메인", "key": "해외 패키지|서브메인"},
-            ]
-        },
-        {
-            "group": "국내 패키지",
-            "items": [
-                {"name": "서브메인", "key": "국내 패키지\n(제주서브메인포함)|서브메인"},
-            ]
-        },
-        {
-            "group": "허니문",
-            "items": [
-                {"name": "서브메인", "key": "허니문|서브메인"},
-            ]
-        },
-        {
-            "group": "해외골프",
-            "items": [
-                {"name": "서브메인", "key": "해외골프|서브메인"},
-            ]
-        },
-        {
-            "group": "국내골프",
-            "items": [
-                {"name": "서브메인", "key": "국내골프|서브메인"},
-            ]
-        },
-        {
-            "group": "제우스",
-            "items": [
-                {"name": "서브메인", "key": "제우스|서브메인"},
-            ]
-        },
-        {
-            "group": "크루즈",
-            "items": [
-                {"name": "서브메인", "key": "크루즈|서브메인"},
-            ]
-        },
-        {
-            "group": "트레킹",
-            "items": [
-                {"name": "서브메인", "key": "트레킹|서브메인"},
-            ]
-        },
-        {
-            "group": "해외호텔",
-            "items": [
-                {"name": "서브메인", "key": "해외호텔|서브메인"},
-            ]
-        },
-        {
-            "group": "기획전",
-            "items": [
-                {"name": "전체", "key": "기획전|"},
-            ]
-        },
-        {
-            "group": "플레이스",
-            "items": [
-                {"name": "메인", "key": "플레이스|메인"},
-                {"name": "상세", "key": "플레이스|상세"},
-            ]
-        },
-        {
-            "group": "항공(해외)",
-            "items": [
-                {"name": "서브메인", "key": "항공\n(해외)|서브메인"},
-                {"name": "검색(해외)", "key": "항공\n(해외)|검색(해외)"},
-                {"name": "약관동의", "key": "항공\n(해외)|약관동의"},
-                {"name": "예약정보입력", "key": "항공\n(해외)|예약정보입력"},
-                {"name": "예약완료", "key": "항공\n(해외)|예약완료"},
-            ]
-        },
-        {
-            "group": "호텔(해외)",
-            "items": [
-                {"name": "서브메인", "key": "호텔 \n(해외)|서브메인"},
-                {"name": "상품리스팅", "key": "호텔 \n(해외)|상품리스팅"},
-                {"name": "상품상세", "key": "호텔 \n(해외)|상품상세"},
-                {"name": "예약하기", "key": "호텔 \n(해외)|예약하기"},
-                {"name": "결제완료", "key": "호텔 \n(해외)|결제완료"},
-            ]
-        },
-        {
-            "group": "마이페이지",
-            "items": [
-                {"name": "메인", "key": "마이페이지|서브메인"},
-                {"name": "패키지", "key": "마이페이지|패키지"},
-                {"name": "해외항공", "key": "마이페이지|해외항공"},
-                {"name": "국내항공", "key": "마이페이지|국내항공"},
-                {"name": "호텔", "key": "마이페이지|호텔"},
-            ]
+        if raw_category_clean:
+            last_category = raw_category_clean
+
+        category, item_name = infer_category_and_item(row_idx, raw_category, sub_category, last_category)
+        current_val = get_val(row_idx, col_current)
+        prev_val = get_val(row_idx, col_prev)
+        rate_decimal = get_val(row_idx, col_rate)
+
+        if not category or not item_name or not (current_val or prev_val):
+            continue
+
+        rate = parse_rate(rate_decimal)
+        row_data = {
+            "name": item_name,
+            "current": int(current_val),
+            "prev": int(prev_val),
+            "rate": rate
         }
+        categories_by_group.setdefault(category, []).append(row_data)
+
+        if category in target_groups and current_val > 0:
+            display_name = f"{category} {item_name}"
+            if rate > best_growth["rate"]:
+                best_growth = {"name": display_name, "rate": rate}
+            if rate < worst_drop["rate"]:
+                worst_drop = {"name": display_name, "rate": rate}
+
+        if DEBUG_MODE:
+            print(f"  행 {row_idx+1}: 그룹='{category}' / 항목='{item_name}' | UV:{int(current_val):,} / 전주:{int(prev_val):,} / 증감률:{rate}%")
+
+    categories_data = [
+        {"group": group, "items": items}
+        for group, items in categories_by_group.items()
     ]
-    
-    # Best Growth & Worst Drop 초기화
-    best_growth = {"name": "-", "rate": -999}
-    worst_drop = {"name": "-", "rate": 999}
-    
-    # 고정 구조에 엑셀 데이터 매핑 및 Best/Worst 계산
-    categories_data = []
-    for group in fixed_categories:
-        items = []
-        for item_template in group["items"]:
-            # 엑셀 데이터에서 값 찾기
-            data = excel_data_map.get(item_template["key"], {"current": 0, "prev": 0, "rate": 0})
-            
-            # 항목 추가
-            items.append({
-                "name": item_template["name"],
-                "current": data["current"],
-                "prev": data["prev"],
-                "rate": data["rate"]
-            })
-            
-            # Best/Worst 업데이트 - 패키지, 항공(해외), 호텔(해외) 3개 카테고리만 대상
-            target_groups = ["패키지", "항공(해외)", "호텔(해외)"]
-            if group["group"] in target_groups and data["current"] > 0:
-                # 항상 "그룹명 항목명" 형식으로 표시 (예: "호텔(해외) 예약하기")
-                display_name = f"{group['group']} {item_template['name']}"
-                
-                if data["rate"] > best_growth["rate"]:
-                    best_growth = {"name": display_name, "rate": data["rate"]}
-                if data["rate"] < worst_drop["rate"]:
-                    worst_drop = {"name": display_name, "rate": data["rate"]}
-        
-        categories_data.append({
-            "group": group["group"],
-            "items": items
-        })
-        
-    # 만약 데이터가 없어서 초기값 그대로라면 수정
-    if best_growth["rate"] == -999: best_growth = {"name": "-", "rate": 0}
-    if worst_drop["rate"] == 999: worst_drop = {"name": "-", "rate": 0}
-    
-    
+
+    if best_growth["rate"] == -999:
+        best_growth = {"name": "-", "rate": 0}
+    if worst_drop["rate"] == 999:
+        worst_drop = {"name": "-", "rate": 0}
+
     print(f"카테고리 데이터: {len(categories_data)}개 그룹 추출")
     print(f"Best Growth: {best_growth['name']} ({best_growth['rate']}%)")
     print(f"Worst Drop: {worst_drop['name']} ({worst_drop['rate']}%)")
@@ -998,7 +1021,15 @@ async def analyze_excel(file: UploadFile = File(...)):
         
         # 3. Combine
         dashboard_data['aiInsight'] = ai_result['insights']
-        dashboard_data['aiContext'] = ai_result['context']
+        ai_context = ai_result.get('context') or {}
+        dashboard_data_for_context = {
+            key: value for key, value in dashboard_data.items()
+            if key not in ('aiInsight', 'aiContext')
+        }
+        dashboard_data['aiContext'] = {
+            **ai_context,
+            "dashboard_data": dashboard_data_for_context
+        }
         
         return dashboard_data
         
